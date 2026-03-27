@@ -3,9 +3,9 @@ import { Link } from 'react-router';
 export function Footer() {
   return <footer className="bg-[#f8f6f1] text-[var(--foreground)] pt-16 md:pt-24 pb-8 font-sans border-t border-[var(--border)] relative z-40">
       <div className="container mx-auto px-4 md:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-12 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
           {/* Brand Column */}
-          <div className="md:col-span-1">
+          <div className="md:col-span-2 lg:col-span-1">
             <Link to="/" className="inline-block mb-6">
               <h2 className="font-serif text-3xl tracking-widest font-medium text-[var(--primary)]">AMEYA</h2>
               <span className="block text-xs uppercase tracking-[0.3em] mt-1 text-black">New York</span>
@@ -55,12 +55,12 @@ export function Footer() {
           </div>
 
           {/* Newsletter */}
-          <div>
+          <div className="md:col-span-2 lg:col-span-1">
             <h3 className="font-serif text-lg mb-6 text-[var(--primary)]">The Newsletter</h3>
             <p className="text-[var(--muted-foreground)] text-sm mb-4">
               Subscribe to receive updates, access to exclusive deals, and more.
             </p>
-            <form className="flex flex-col space-y-3" onSubmit={e => e.preventDefault()}>
+            <form className="flex flex-col space-y-3 w-full max-w-md" onSubmit={e => e.preventDefault()}>
               <div className="relative">
                 <input type="email" placeholder="Your email address" className="w-full bg-transparent border-b border-[var(--border)] py-2 text-sm focus:outline-none focus:border-[var(--secondary)] transition-colors placeholder:text-[var(--muted-foreground)]/60 text-[var(--foreground)]" />
                 <button type="submit" className="absolute right-0 top-2 text-[var(--muted-foreground)] hover:text-[var(--secondary)] transition-colors">

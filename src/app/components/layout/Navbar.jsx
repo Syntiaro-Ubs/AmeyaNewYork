@@ -41,47 +41,54 @@ export function Navbar() {
               <SheetTrigger className="p-2 hover:text-[var(--primary)] transition-colors">
                 <Menu size={24} strokeWidth={1} />
               </SheetTrigger>
-              <SheetContent side="left" className="w-[300px] sm:w-[350px] overflow-y-auto">
-                <SheetHeader className="mb-8 text-left">
+              <SheetContent
+                side="left"
+                className="!w-screen !max-w-none sm:!w-[350px] md:!w-[420px] overflow-y-auto pt-12 pb-6 px-5 sm:px-8"
+              >
+                <SheetHeader className="mb-8 text-center sm:text-left">
                   <SheetTitle className="font-serif text-2xl text-[var(--primary)]">AMEYA</SheetTitle>
                   <SheetDescription className="sr-only">Navigation Menu</SheetDescription>
                 </SheetHeader>
                 
-                <div className="flex flex-col space-y-2">
-                  <Link to="/category/new-arrivals" className="py-4 text-base font-medium border-b border-[var(--border)] hover:text-[var(--primary)] transition-colors uppercase tracking-wider">
+                <div className="flex flex-col space-y-2 items-center sm:items-start text-center sm:text-left">
+                  <Link to="/category/new-arrivals" className="w-full py-4 text-base font-medium border-b border-[var(--border)] hover:text-[var(--primary)] transition-colors uppercase tracking-wider">
                     All Jewelry
                   </Link>
 
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="collections" className="border-b border-[var(--border)]">
-                      <AccordionTrigger className="uppercase tracking-wider hover:text-[var(--primary)] text-base font-medium hover:no-underline">
+                      <AccordionTrigger className="uppercase tracking-wider hover:text-[var(--primary)] text-base font-medium hover:no-underline text-center sm:text-left">
                         Collections
                       </AccordionTrigger>
                       <AccordionContent>
-                        <div className="flex flex-col space-y-4 py-2 pl-4">
-                          <Link to="/collection/eclat-initial" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)]">Eclat Initial</Link>
-                          <Link to="/collection/eleve" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)]">Eleve</Link>
-                          <Link to="/collection/love-engagement" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)]">Love and Engagement</Link>
-                          <Link to="/collection/apex-spark" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)]">Apex Spark</Link>
+                        <div className="flex flex-col space-y-4 py-2 pl-0 sm:pl-4">
+                          <Link to="/collection/eclat-initial" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)] text-center sm:text-left">Eclat Initial</Link>
+                          <Link to="/collection/eleve" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)] text-center sm:text-left">Eleve</Link>
+                          <Link to="/collection/love-engagement" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)] text-center sm:text-left">Love and Engagement</Link>
+                          <Link to="/collection/apex-spark" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)] text-center sm:text-left">Apex Spark</Link>
                         </div>
                       </AccordionContent>
                     </AccordionItem>
 
                     <AccordionItem value="categories" className="border-b border-[var(--border)]">
-                      <AccordionTrigger className="uppercase tracking-wider hover:text-[var(--primary)] text-base font-medium hover:no-underline">
+                      <AccordionTrigger className="uppercase tracking-wider hover:text-[var(--primary)] text-base font-medium hover:no-underline text-center sm:text-left">
                         Shop by Category
                       </AccordionTrigger>
                       <AccordionContent>
-                        <div className="flex flex-col space-y-4 py-2 pl-4">
-                          <Link to="/category/rings" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)]">Rings</Link>
-                          <Link to="/category/earrings" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)]">Earrings</Link>
-                          <Link to="/category/bracelets" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)]">Bracelets & Bangles</Link>
-                          <Link to="/category/necklaces" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)]">Pendants & Necklaces</Link>
-                          <Link to="/category/sets" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)]">Sets</Link>
+                        <div className="flex flex-col space-y-4 py-2 pl-0 sm:pl-4">
+                          <Link to="/category/rings" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)] text-center sm:text-left">Rings</Link>
+                          <Link to="/category/earrings" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)] text-center sm:text-left">Earrings</Link>
+                          <Link to="/category/bracelets" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)] text-center sm:text-left">Bracelets & Bangles</Link>
+                          <Link to="/category/necklaces" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)] text-center sm:text-left">Pendants & Necklaces</Link>
+                          <Link to="/category/sets" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)] text-center sm:text-left">Sets</Link>
                         </div>
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
+
+                  <Link to="/contact" className="pt-8 text-base font-medium hover:text-[var(--primary)] transition-colors">
+                    Book an Appointment
+                  </Link>
                 </div>
 
               </SheetContent>
@@ -104,7 +111,7 @@ export function Navbar() {
 
           {/* Right Side: Contact, Login, Cart */}
           <div className="flex items-center space-x-2 md:space-x-4">
-            <Link to="/contact" className="p-2 hover:text-[var(--primary)] transition-colors" aria-label="Contact">
+            <Link to="/contact" className="hidden md:inline-flex p-2 hover:text-[var(--primary)] transition-colors" aria-label="Contact">
               <MessageCircle size={22} strokeWidth={1} />
             </Link>
             
