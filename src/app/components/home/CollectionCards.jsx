@@ -1,101 +1,194 @@
 import { Link } from 'react-router';
-import { motion } from 'motion/react';
-import { ArrowRight } from 'lucide-react';
-import apexSparkImg from '../../../assets/collection/Apex Spark/All Photos/AMP110011_D.JPG';
-import eleveImg from '../../../assets/collection/ELEVE/2/RBM.JPG';
-import eclatInitialImg from '../../../assets/collection/ECLAT INITIAL/AM-P000444-A-ELE_3.JPG';
-import loveEngagementImg from '../../../assets/collection/Love and Engagement/ring red/DR1M.JPG';
-const allCollections = [{
-  id: 'apex-spark',
-  name: 'Apex Spark',
-  slug: 'apex-spark',
-  tagline: 'Bold & Avant-Garde',
-  image: apexSparkImg
-}, {
-  id: 'eleve',
-  name: 'Elevé',
-  slug: 'eleve',
-  tagline: 'Elevated Essentials',
-  image: eleveImg
-}, {
-  id: 'eclat-initial',
-  name: 'Éclat Initial',
-  slug: 'eclat-initial',
-  tagline: 'Personal & Precious',
-  image: eclatInitialImg
-}, {
-  id: 'love-engagement',
-  name: 'Love & Engagement',
-  slug: 'love-engagement',
-  tagline: 'Forever Begins Here',
-  image: loveEngagementImg
-}];
-export function CollectionCards() {
-  return <section className="bg-[var(--background)] py-20 md:py-28">
+import { motion, useScroll, useSpring } from 'motion/react';
+import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { collections } from '../../data';
+import { MediaRenderer } from '../ui/MediaRenderer';
+import { safeJsonParse } from '../../utils/json';
+import { useRef, useState, useEffect } from 'react';
+
+export function CollectionCards({ data }) {
+  const scrollRef = useRef(null);
+  const [scrollProgress, setScrollProgress] = useState(0);
+
+  if (data && data.is_visible === 0) return null;
+
+  const sectionTitle = data?.title || "Collections";
+  const sectionSubtitle = data?.subtitle || "Explore our curated collections, each telling a unique story";
+  const defaultCollections = ['apex-spark', 'eleve', 'eclat-initial', 'love-engagement'];
+  const rawFeaturedItems = safeJsonParse(data?.content_json, defaultCollections);
+
+  // Normalize the items and merge with static collection data
+  const featuredCollections = rawFeaturedItems.map(item => {
+    const slug = typeof item === 'string' ? item : item.slug;
+    const baseCollection = collections.find(c => c.slug === slug);
+
+    if (!baseCollection) return null;
+
+    return {
+      ...baseCollection,
+      image: (typeof item !== 'string' && item.image) ? item.image : baseCollection.image
+    };
+  }).filter(Boolean);
+
+  const isCarousel = featuredCollections.length > 1;
+
+  const scroll = direction => {
+    if (scrollRef.current) {
+      const container = scrollRef.current;
+      const scrollAmount = container.clientWidth * 0.75;
+      const targetScroll = container.scrollLeft + (direction === "left" ? -scrollAmount : scrollAmount);
+      container.scrollTo({
+        left: targetScroll,
+        behavior: "smooth"
+      });
+    }
+  };
+
+  const scrollToIndex = (index) => {
+    if (scrollRef.current) {
+      const container = scrollRef.current;
+      const child = container.children[index];
+      if (child) {
+        const left = child.offsetLeft - (container.clientWidth - child.clientWidth) / 2;
+        container.scrollTo({
+          left: left,
+          behavior: 'smooth'
+        });
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (scrollRef.current) {
+        const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+        const progress = scrollLeft / (scrollWidth - clientWidth);
+        setScrollProgress(progress || 0);
+      }
+    };
+
+    const currentRef = scrollRef.current;
+    if (currentRef) {
+      currentRef.addEventListener('scroll', handleScroll);
+    }
+    return () => {
+      if (currentRef) currentRef.removeEventListener('scroll', handleScroll);
+    };
+  }, [featuredCollections.length]);
+
+  return (
+    <section className="bg-[var(--background)] py-20 md:py-28 overflow-hidden">
       <div className="container mx-auto px-4 md:px-8">
-        {/* Section Header */}
-        <motion.div initial={{
-        opacity: 0,
-        y: 30
-      }} whileInView={{
-        opacity: 1,
-        y: 0
-      }} transition={{
-        duration: 0.7
-      }} viewport={{
-        once: true
-      }} className="text-center mb-14 md:mb-20">
-          <span className="text-[10px] md:text-xs font-semibold tracking-[0.3em] uppercase text-[var(--primary)] mb-4 block">
-          AMEYA
-          </span>
-          <h2 className="text-4xl md:text-5xl font-serif text-[var(--foreground)]">
-            Collections
-          </h2>
-          <p className="text-[var(--muted-foreground)] text-lg md:text-xl font-light mt-4 max-w-xl mx-auto">
-            Explore our curated collections, each telling a unique story
-          </p>
-        </motion.div>
+        {/* Cards Display */}
+        <div className="relative group/section">
+          {/* Arrow Controls */}
+          {isCarousel && (
+            <>
+              <button 
+                onClick={() => scroll("left")} 
+                className="hidden md:flex absolute -left-6 top-1/2 -translate-y-1/2 z-20 w-12 h-12 items-center justify-center rounded-full bg-white/95 shadow-[0_4px_20px_rgba(0,0,0,0.08)] text-neutral-900 opacity-0 group-hover/section:opacity-100 transition-all duration-300 hover:scale-110 hover:shadow-xl border border-neutral-100" 
+                aria-label="Scroll left"
+              >
+                <ChevronLeft className="w-5 h-5" strokeWidth={1.5} />
+              </button>
 
-        {/* Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
-          {allCollections.map((collection, index) => <motion.div key={collection.id} initial={{
-          opacity: 0,
-          y: 40
-        }} whileInView={{
-          opacity: 1,
-          y: 0
-        }} transition={{
-          duration: 0.6,
-          delay: index * 0.1
-        }} viewport={{
-          once: true,
-          amount: 0.2
-        }}>
-              <Link to={`/collection/${collection.slug}`} className="group block relative overflow-hidden rounded-sm h-[420px] md:h-[480px]">
-                {/* Image */}
-                <div className="absolute inset-0">
-                  <img src={collection.image} alt={collection.name} className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" />
-                </div>
+              <button 
+                onClick={() => scroll("right")} 
+                className="hidden md:flex absolute -right-6 top-1/2 -translate-y-1/2 z-20 w-12 h-12 items-center justify-center rounded-full bg-white/95 shadow-[0_4px_20px_rgba(0,0,0,0.08)] text-neutral-900 opacity-0 group-hover/section:opacity-100 transition-all duration-300 hover:scale-110 hover:shadow-xl border border-neutral-100" 
+                aria-label="Scroll right"
+              >
+                <ChevronRight className="w-5 h-5" strokeWidth={1.5} />
+              </button>
+            </>
+          )}
 
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent transition-all duration-500 group-hover:from-black/80" />
-
-                {/* Content */}
-                <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-7">
-                  <span className="text-[10px] tracking-[0.25em] uppercase text-white/70 mb-2">
-                    {collection.tagline}
-                  </span>
-                  <h3 className="text-2xl md:text-[1.7rem] font-serif text-white mb-4 leading-snug">
-                    {collection.name}
-                  </h3>
-                  <div className="flex items-center gap-2 text-xs tracking-widest uppercase text-white/80 group-hover:text-white transition-colors">
-                    Explore
-                    <ArrowRight size={14} className="group-hover:translate-x-1.5 transition-transform duration-300" />
+          <div
+            ref={scrollRef}
+            className={`
+              ${isCarousel
+                ? 'flex overflow-x-auto pb-12 gap-6 scrollbar-hide snap-x snap-mandatory'
+                : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6'}
+            `}
+            style={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              WebkitOverflowScrolling: 'touch'
+            }}
+          >
+            {featuredCollections.map((collection, index) => (
+              <motion.div
+                key={`${collection.id}-${index}`}
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: index * 0.1 }}
+                viewport={{ once: true, amount: 0.2 }}
+                className={isCarousel ? 'min-w-[85vw] sm:min-w-[45vw] lg:min-w-[22vw] snap-center' : ''}
+              >
+                <Link to={`/collection/${collection.slug}`} className="group block relative overflow-hidden rounded-sm h-[450px] md:h-[520px]">
+                  {/* Image */}
+                  <div className="absolute inset-0">
+                    <MediaRenderer
+                      src={collection.image}
+                      alt={collection.name}
+                      className="w-full h-full object-cover transition-transform duration-1000 ease-out group-hover:scale-110"
+                    />
                   </div>
+
+                  {/* Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-all duration-700 group-hover:from-black/90" />
+
+                  {/* Content */}
+                  <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-10">
+                    <motion.span
+                      initial={{ opacity: 0, x: -10 }}
+                      whileInView={{ opacity: 0.7, x: 0 }}
+                      className="text-[10px] tracking-[0.3em] uppercase text-white mb-3"
+                    >
+                      {collection.tagline || 'Exclusive Collection'}
+                    </motion.span>
+                    <h3 className="text-3xl md:text-4xl font-serif text-white mb-6 leading-tight group-hover:text-[var(--primary)] transition-colors duration-500">
+                      {collection.name}
+                    </h3>
+                    <div className="flex items-center gap-3 text-[10px] tracking-[0.2em] uppercase text-white/90 group-hover:text-white transition-all transform group-hover:translate-x-2">
+                      <span className="border-b border-white/30 pb-0.5">Explore Discovery</span>
+                      <ArrowRight size={14} className="transition-transform duration-500" />
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Carousel Indicators */}
+          {isCarousel && (
+            <div className="flex justify-center mt-6">
+              <div className="relative py-4 group/bar cursor-pointer">
+                <div className="h-[2px] w-48 bg-neutral-100 relative overflow-hidden rounded-full transition-all group-hover/bar:h-[3px]">
+                  <motion.div 
+                    className="absolute inset-y-0 left-0 bg-neutral-900 rounded-full"
+                    style={{ 
+                      width: `${Math.max(20, 100 / featuredCollections.length)}%`,
+                      left: `${scrollProgress * (100 - Math.max(20, 100 / featuredCollections.length))}%`
+                    }}
+                  />
                 </div>
-              </Link>
-            </motion.div>)}
+                {/* Clickable Overlay Segments */}
+                <div className="absolute inset-0 flex">
+                  {featuredCollections.map((_, idx) => (
+                    <div 
+                      key={idx} 
+                      className="flex-1 h-full z-10" 
+                      onClick={() => scrollToIndex(idx)}
+                      role="button"
+                      aria-label={`Go to slide ${idx + 1}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-    </section>;
+    </section>
+  );
 }

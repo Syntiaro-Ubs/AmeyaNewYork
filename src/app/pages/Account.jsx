@@ -1,15 +1,25 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
-import { User, MapPin, CreditCard, ShoppingBag, Gift, Power, ChevronRight, Edit2, Trash2 } from 'lucide-react';
+import { useWishlist } from '../context/WishlistContext';
+import { User, MapPin, CreditCard, ShoppingBag, Gift, Power, ChevronRight, Edit2, Trash2, Heart } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link, useNavigate } from 'react-router';
 export function Account() {
   const {
     user,
-    logout
+    logout,
+    updateUser
   } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: user?.name?.split(' ')[0] || '',
+    lastName: user?.name?.split(' ')[1] || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    gender: user?.gender || 'Male'
+  });
   const navigate = useNavigate();
   if (!user) {
     return <div className="min-h-[60vh] flex flex-col items-center justify-center pt-32 pb-20 px-4">
@@ -25,6 +35,12 @@ export function Account() {
   }
   const handleUpdateProfile = e => {
     e.preventDefault();
+    updateUser({
+      name: `${formData.firstName} ${formData.lastName}`,
+      phone: formData.phone,
+      gender: formData.gender
+    });
+    setIsEditing(false);
     toast.success("Profile updated successfully!");
   };
   const menuItems = [{
@@ -48,6 +64,10 @@ export function Account() {
     id: 'payments',
     label: 'Saved Cards & Wallet',
     icon: Gift
+  }, {
+    id: 'wishlist',
+    label: 'My Wishlist',
+    icon: Gift // Using Gift for now, or Heart if I add it
   }];
   return <div className="min-h-screen pt-32 pb-20 bg-gray-50">
       <div className="container mx-auto px-4 md:px-8 max-w-6xl">
@@ -107,11 +127,11 @@ export function Account() {
           }} transition={{
             duration: 0.3
           }} className="bg-white p-6 md:p-8 shadow-sm rounded-sm min-h-[500px]">
-              {activeTab === 'profile' && <div>
+                {activeTab === 'profile' && <div>
                   <div className="flex items-center justify-between mb-8">
                     <h2 className="text-lg font-semibold flex items-center gap-2">
                       Personal Information
-                      <span className="text-xs font-normal text-[var(--primary)] cursor-pointer hover:underline ml-4">Edit</span>
+                      {!isEditing && <span onClick={() => setIsEditing(true)} className="text-xs font-normal text-[var(--primary)] cursor-pointer hover:underline ml-4">Edit</span>}
                     </h2>
                   </div>
                   
@@ -119,11 +139,11 @@ export function Account() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-wider text-gray-500 font-medium">First Name</label>
-                        <input type="text" defaultValue={user.name.split(' ')[0]} className="w-full bg-gray-50 border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:border-[var(--primary)] rounded-sm" />
+                        <input type="text" disabled={!isEditing} value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} className="w-full bg-gray-50 border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:border-[var(--primary)] rounded-sm disabled:opacity-70" />
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-wider text-gray-500 font-medium">Last Name</label>
-                        <input type="text" defaultValue={user.name.split(' ')[1] || ''} className="w-full bg-gray-50 border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:border-[var(--primary)] rounded-sm" />
+                        <input type="text" disabled={!isEditing} value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} className="w-full bg-gray-50 border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:border-[var(--primary)] rounded-sm disabled:opacity-70" />
                       </div>
                     </div>
 
@@ -131,11 +151,11 @@ export function Account() {
                       <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4">Gender</h3>
                       <div className="flex gap-6">
                         <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="radio" name="gender" className="accent-[var(--primary)]" defaultChecked />
+                          <input type="radio" name="gender" disabled={!isEditing} checked={formData.gender === 'Male'} onChange={() => setFormData({ ...formData, gender: 'Male' })} className="accent-[var(--primary)]" />
                           <span className="text-sm">Male</span>
                         </label>
                         <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="radio" name="gender" className="accent-[var(--primary)]" />
+                          <input type="radio" name="gender" disabled={!isEditing} checked={formData.gender === 'Female'} onChange={() => setFormData({ ...formData, gender: 'Female' })} className="accent-[var(--primary)]" />
                           <span className="text-sm">Female</span>
                         </label>
                       </div>
@@ -144,65 +164,57 @@ export function Account() {
                     <div className="space-y-2">
                       <label className="text-xs uppercase tracking-wider text-gray-500 font-medium">Email Address</label>
                       <div className="flex gap-4">
-                        <input type="email" defaultValue={user.email} className="flex-1 bg-gray-50 border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:border-[var(--primary)] rounded-sm" disabled />
-                        <button type="button" className="text-xs text-[var(--primary)] font-medium hover:underline">Update</button>
+                        <input type="email" value={formData.email} disabled className="flex-1 bg-gray-50 border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:border-[var(--primary)] rounded-sm opacity-70" />
+                        <button type="button" onClick={() => toast.info("Email cannot be changed directly.")} className="text-xs text-[var(--primary)] font-medium hover:underline">Update</button>
                       </div>
                     </div>
 
                     <div className="space-y-2">
                       <label className="text-xs uppercase tracking-wider text-gray-500 font-medium">Mobile Number</label>
                       <div className="flex gap-4">
-                        <input type="tel" defaultValue="+1 9876543210" className="flex-1 bg-gray-50 border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:border-[var(--primary)] rounded-sm" />
-                        <button type="button" className="text-xs text-[var(--primary)] font-medium hover:underline">Update</button>
+                        <input type="tel" disabled={!isEditing} value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} placeholder="+1 9876543210" className="flex-1 bg-gray-50 border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:border-[var(--primary)] rounded-sm disabled:opacity-70" />
+                        <button type="button" onClick={() => setIsEditing(true)} className="text-xs text-[var(--primary)] font-medium hover:underline">Update</button>
                       </div>
                     </div>
 
-                    <button type="submit" className="bg-[var(--primary)] text-white px-8 py-3 uppercase tracking-wider text-xs font-bold hover:bg-[var(--primary)]/90 transition-all shadow-sm rounded-sm mt-4">
-                      Save Changes
-                    </button>
+                    {isEditing && <div className="flex gap-4">
+                      <button type="submit" className="bg-[var(--primary)] text-white px-8 py-3 uppercase tracking-wider text-xs font-bold hover:bg-[var(--primary)]/90 transition-all shadow-sm rounded-sm mt-4">
+                        Save Changes
+                      </button>
+                      <button type="button" onClick={() => setIsEditing(false)} className="border border-gray-200 px-8 py-3 uppercase tracking-wider text-xs font-bold hover:bg-gray-50 transition-all shadow-sm rounded-sm mt-4">
+                        Cancel
+                      </button>
+                    </div>}
                   </form>
                 </div>}
 
               {activeTab === 'addresses' && <div>
                    <div className="flex items-center justify-between mb-8">
                     <h2 className="text-lg font-semibold">Manage Addresses</h2>
-                    <button className="text-[var(--primary)] text-sm font-medium hover:bg-[var(--primary)]/5 px-4 py-2 rounded-sm border border-[var(--primary)] transition-colors">
+                    <button onClick={() => toast.info("Add Address functionality would open a modal/form here.")} className="text-[var(--primary)] text-sm font-medium hover:bg-[var(--primary)]/5 px-4 py-2 rounded-sm border border-[var(--primary)] transition-colors">
                       + Add New Address
                     </button>
                   </div>
 
                   <div className="space-y-4">
-                    <div className="border border-gray-200 p-6 relative group hover:shadow-md transition-shadow rounded-sm bg-white">
+                    {user.addresses && user.addresses.length > 0 ? user.addresses.map((addr, idx) => <div key={idx} className="border border-gray-200 p-6 relative group hover:shadow-md transition-shadow rounded-sm bg-white">
                       <div className="absolute top-4 right-4 flex gap-2">
                         <button className="p-2 hover:bg-gray-100 rounded-full text-gray-500"><Edit2 size={14} /></button>
                         <button className="p-2 hover:bg-red-50 rounded-full text-red-500"><Trash2 size={14} /></button>
                       </div>
-                      <span className="bg-gray-100 text-gray-600 px-2 py-1 text-[10px] uppercase font-bold tracking-wider rounded-sm mb-3 inline-block">Home</span>
+                      <span className="bg-gray-100 text-gray-600 px-2 py-1 text-[10px] uppercase font-bold tracking-wider rounded-sm mb-3 inline-block">{addr.type}</span>
                       <div className="flex gap-4 items-start mb-2">
                         <span className="font-semibold text-sm">{user.name}</span>
-                        <span className="text-sm text-gray-900 font-bold">+1 9876543210</span>
+                        <span className="text-sm text-gray-900 font-bold">{user.phone}</span>
                       </div>
                       <p className="text-sm text-gray-600 leading-relaxed max-w-md">
-                        123 Luxury Avenue, Apartment 4B, Upper East Side,<br />
-                        New York, NY 10021, United States
+                        {addr.street}, {addr.apt ? addr.apt + ',' : ''} {addr.city},<br />
+                        {addr.state}, {addr.zip}, {addr.country}
                       </p>
-                    </div>
-
-                    <div className="border border-gray-200 p-6 relative group hover:shadow-md transition-shadow rounded-sm bg-white">
-                      <div className="absolute top-4 right-4 flex gap-2">
-                        <button className="p-2 hover:bg-gray-100 rounded-full text-gray-500"><Edit2 size={14} /></button>
-                        <button className="p-2 hover:bg-red-50 rounded-full text-red-500"><Trash2 size={14} /></button>
-                      </div>
-                      <span className="bg-gray-100 text-gray-600 px-2 py-1 text-[10px] uppercase font-bold tracking-wider rounded-sm mb-3 inline-block">Work</span>
-                      <div className="flex gap-4 items-start mb-2">
-                        <span className="font-semibold text-sm">{user.name}</span>
-                        <span className="text-sm text-gray-900 font-bold">+1 9876543210</span>
-                      </div>
-                      <p className="text-sm text-gray-600 leading-relaxed max-w-md">
-                        AMEYA HQ, 5th Avenue, Fashion District,<br />
-                        New York, NY 10018, United States
-                      </p>
-                    </div>
+                    </div>) : <div className="text-center py-10 bg-gray-50 rounded-sm border border-dashed border-gray-300">
+                        <MapPin className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                        <p className="text-sm text-gray-500">No addresses saved yet.</p>
+                      </div>}
                   </div>
                 </div>}
 
@@ -279,9 +291,37 @@ export function Account() {
                     </div>
                   </div>
                 </div>}
+
+              {activeTab === 'wishlist' && <WishlistTab />}
             </motion.div>
           </div>
         </div>
       </div>
     </div>;
+}
+
+function WishlistTab() {
+  const { wishlistItems } = useWishlist();
+  return (
+    <div>
+      <h2 className="text-lg font-semibold mb-8">My Wishlist</h2>
+      {wishlistItems.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Wishlist items would be rendered here. 
+              Ideally we fetch product details for each ID. */}
+          {wishlistItems.map(id => (
+            <div key={id} className="border border-gray-100 p-4 rounded-sm">
+               <p className="text-sm font-medium">Product ID: {id}</p>
+               <Link to={`/product/${id}`} className="text-xs text-[var(--primary)] hover:underline">View Product</Link>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-20">
+          <p className="text-gray-500">Your wishlist is empty.</p>
+          <Link to="/" className="text-[var(--primary)] font-medium hover:underline mt-2 inline-block">Discover Pieces</Link>
+        </div>
+      )}
+    </div>
+  );
 }

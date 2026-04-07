@@ -10,7 +10,30 @@ import { Orders } from "./pages/Orders";
 import { Contact } from "./pages/Contact";
 import { Cart } from "./pages/Cart";
 import { Checkout } from "./pages/Checkout";
+import { Dashboard } from "./pages/Dashboard/Dashboard";
+import { DashboardLogin } from "./pages/Dashboard/DashboardLogin";
+
+// Protected Route Component for Admin Dashboard
+const AdminProtectedRoute = ({ children }) => {
+  const token = localStorage.getItem('admin_token');
+  if (!token) {
+    window.location.href = '/dashboard/login';
+    return null;
+  }
+  return children;
+};
+
 export const router = createBrowserRouter([{
+  path: "/dashboard",
+  Component: () => (
+    <AdminProtectedRoute>
+      <Dashboard />
+    </AdminProtectedRoute>
+  )
+}, {
+  path: "/dashboard/login",
+  Component: DashboardLogin
+}, {
   path: "/",
   Component: Layout,
   children: [{

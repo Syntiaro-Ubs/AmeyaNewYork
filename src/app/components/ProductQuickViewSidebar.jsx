@@ -1,4 +1,5 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState, useMemo } from 'react';
+import { getImageUrl } from '../utils/image';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ShoppingBag, Heart, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router';
@@ -71,9 +72,16 @@ function QuickCard({
   product,
   onCardClick
 }) {
+  const getImageUrl = (path) => {
+    if (!path) return '';
+    if (path.startsWith('http')) return path;
+    if (path.startsWith('/uploads/')) return `http://localhost:5000${path}`;
+    return path;
+  };
+  
   return <button onClick={() => onCardClick(product)} className="flex-shrink-0 w-[148px] text-left group">
       <div className="relative aspect-[3/4] overflow-hidden bg-[#f5f4f2] mb-2.5">
-        <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-[1.05] transition-transform duration-500" />
+        <img src={getImageUrl(product.image)} alt={product.name} className="w-full h-full object-cover group-hover:scale-[1.05] transition-transform duration-500" />
       </div>
       <p className="font-serif text-[var(--foreground)] text-sm leading-snug mb-0.5 truncate group-hover:text-[var(--primary)] transition-colors">
         {product.name}
@@ -111,31 +119,78 @@ function QuickViewContent({
     toggleWishlist,
     isInWishlist
   } = useWishlist();
+  const [liveProducts, setLiveProducts] = useState([]);
   const scrollRef = useRef(null);
-  const wishlisted = isInWishlist(product.id);
+  
+  useEffect(() => {
+    const fetchAllProducts = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/products');
+        const data = await response.json();
+        setLiveProducts(data);
+      } catch (err) {
+        console.error('Error fetching quickview recos:', err);
+      }
+    };
+    fetchAllProducts();
+  }, []);
+
+  const getImageUrl = (path) => {
+    if (!path) return '';
+    if (path.startsWith('http')) return path;
+    if (path.startsWith('/uploads/')) return `http://localhost:5000${path}`;
+    return path;
+  };
+
+  const idValue = product.product_id || product.id;
+  const wishlisted = isInWishlist(idValue);
   const collection = product.collection ? collections.find(c => c.slug === product.collection) : null;
   const activeMaterials = detectActiveMaterials(product.material);
   const stones = detectStones(product.material);
 
   /* Gallery images — use extra product gallery entries if available, else editorial */
-  const galleryImages = [product.gallery[1] || GALLERY_MODEL, product.gallery[2] || GALLERY_CLOSEUP, product.gallery[3] || GALLERY_LIFESTYLE];
+  const parsedGallery = useMemo(() => {
+    if (!product.gallery) return [];
+    if (typeof product.gallery === 'string') {
+      try {
+        return JSON.parse(product.gallery);
+      } catch (e) {
+        return [];
+      }
+    }
+    return Array.isArray(product.gallery) ? product.gallery : [];
+  }, [product.gallery]);
+
+  const galleryImages = [
+    getImageUrl(product.image || parsedGallery[0] || GALLERY_MODEL),
+    getImageUrl(parsedGallery[0] ? (parsedGallery[1] || GALLERY_CLOSEUP) : GALLERY_MODEL),
+    getImageUrl(parsedGallery[1] ? (parsedGallery[2] || GALLERY_LIFESTYLE) : GALLERY_CLOSEUP)
+  ];
 
   /* You May Also Like — same category, any collection */
-  const youMayAlsoLike = products.filter(p => p.id !== product.id && p.category === product.category).slice(0, 12);
+  const youMayAlsoLike = useMemo(() => {
+    if (liveProducts.length === 0) return [];
+    return liveProducts.filter(p => p.id !== product.id && p.category === product.category).slice(0, 12);
+  }, [product.id, product.category, liveProducts]);
 
   /* Discover More — same stone keyword(s), any category; fallback: same collection */
-  const discoverMore = products.filter(p => {
-    if (p.id === product.id || !p.material) return false;
-    const mat = p.material.toLowerCase();
-    if (stones.length > 0) return stones.some(s => mat.includes(s));
-    return p.collection === product.collection;
-  }).slice(0, 12);
+  const discoverMore = useMemo(() => {
+    if (liveProducts.length === 0) return [];
+    return liveProducts.filter(p => {
+      if (p.id === product.id || !p.material) return false;
+      const mat = p.material.toLowerCase();
+      if (stones.length > 0) return stones.some(s => mat.includes(s));
+      return p.collection === product.collection;
+    }).slice(0, 12);
+  }, [product.id, product.collection, stones, liveProducts]);
 
   /* Scroll to top when product changes */
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [product.id]);
+
   const stoneLabel = stones.length > 0 ? stones.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' & ') : collection?.name || 'This Collection';
+
   return <>
       {/* ── Backdrop ── */}
       <motion.div key="qv-backdrop" initial={{
@@ -184,7 +239,7 @@ function QuickViewContent({
 
             {/* Thumbnail — click opens product page */}
             <Link to={`/product/${product.id}`} onClick={closeQuickView} className="flex-shrink-0 w-[150px] aspect-[3/4] overflow-hidden bg-[#f5f4f2] block">
-              <img src={product.image} alt={product.name} className="w-full h-full object-cover hover:scale-[1.04] transition-transform duration-500" />
+              <img src={getImageUrl(product.image)} alt={product.name} className="w-full h-full object-cover hover:scale-[1.04] transition-transform duration-500" />
             </Link>
 
             {/* Details */}
@@ -207,10 +262,13 @@ function QuickViewContent({
 
               {/* Action buttons */}
               <div className="flex flex-col gap-2 mt-auto">
-                <button onClick={() => addToCart(product.id, 1)} className="w-full py-[11px] bg-[var(--foreground)] text-white text-[10px] uppercase tracking-[0.24em] hover:opacity-80 transition-opacity flex items-center justify-center gap-2">
+                <button onClick={() => {
+                  addToCart(product.id, 1);
+                  closeQuickView();
+                }} className="w-full py-[11px] bg-[var(--foreground)] text-white text-[10px] uppercase tracking-[0.24em] hover:opacity-80 transition-opacity flex items-center justify-center gap-2">
                   <ShoppingBag size={12} strokeWidth={1.5} /> Add to Bag
                 </button>
-                <button onClick={() => toggleWishlist(product.id)} className={`w-full py-[11px] border text-[10px] uppercase tracking-[0.22em] transition-all flex items-center justify-center gap-2 ${wishlisted ? 'border-[var(--foreground)] text-[var(--foreground)] bg-[#f5f4f2]' : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]'}`}>
+                <button onClick={() => toggleWishlist(idValue)} className={`w-full py-[11px] border text-[10px] uppercase tracking-[0.22em] transition-all flex items-center justify-center gap-2 ${wishlisted ? 'border-[var(--foreground)] text-[var(--foreground)] bg-[#f5f4f2]' : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]'}`}>
                   <Heart size={12} strokeWidth={1.5} fill={wishlisted ? 'currentColor' : 'none'} />
                   {wishlisted ? 'Saved to Wishlist' : 'Save to Wishlist'}
                 </button>

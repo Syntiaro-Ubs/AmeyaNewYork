@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { getImageUrl } from '../utils/image';
 import { useParams, Link, useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ShoppingBag, Heart, MapPin, MessageSquare, ChevronDown } from 'lucide-react';
@@ -60,7 +61,8 @@ export function ProductDetails() {
     id
   } = useParams();
   const navigate = useNavigate();
-  const product = products.find(p => p.id === id);
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [selectedVariant, setSelectedVariant] = useState(0);
   const {
@@ -70,16 +72,53 @@ export function ProductDetails() {
     toggleWishlist,
     isInWishlist
   } = useWishlist();
-  const images = product?.gallery && product.gallery.length > 0 ? product.gallery : product ? [product.image] : [];
-  const materialVariants = parseMaterialVariants(product?.material);
+
   useEffect(() => {
-    setActiveImageIndex(0);
-    setSelectedVariant(0);
+    const fetchProduct = async () => {
+      try {
+        const response = await fetch(`http://localhost:5000/api/products/${id}`);
+        if (!response.ok) throw new Error('Product not found');
+        const data = await response.json();
+        
+        // Parse gallery if it's a string
+        if (data.gallery && typeof data.gallery === 'string') {
+          data.gallery = JSON.parse(data.gallery);
+        }
+        
+        setProduct(data);
+      } catch (err) {
+        console.error('Error fetching product:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProduct();
     window.scrollTo({
       top: 0,
       behavior: 'smooth'
     });
   }, [id]);
+
+  const images = useMemo(() => {
+    if (!product) return [];
+    const list = product.image ? [getImageUrl(product.image)] : [];
+    if (product.gallery) {
+      const gallery = Array.isArray(product.gallery) ? product.gallery : (typeof product.gallery === 'string' ? JSON.parse(product.gallery) : []);
+      const galleryList = gallery.map(img => getImageUrl(img));
+      return [...list, ...galleryList];
+    }
+    return list;
+  }, [product]);
+
+  const materialVariants = parseMaterialVariants(product?.material);
+
+  if (loading) {
+    return <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin"></div>
+    </div>;
+  }
+
   if (!product) {
     return <div className="min-h-[60vh] flex flex-col items-center justify-center gap-5">
         <h2 className="text-3xl font-serif">Product Not Found</h2>
@@ -222,7 +261,7 @@ export function ProductDetails() {
 
               {/* ── Accordion Details ── */}
               <Accordion title="Product Details">
-                <p className="mb-3">{product.description}</p>
+                <p className="mb-3 break-words whitespace-pre-line">{product.description}</p>
                 <ul className="space-y-1.5 list-none">
                   <li className="flex items-start gap-2">
                     <span className="w-1 h-1 rounded-full bg-[var(--muted-foreground)] mt-2 flex-shrink-0" />
@@ -236,43 +275,42 @@ export function ProductDetails() {
                     <span className="w-1 h-1 rounded-full bg-[var(--muted-foreground)] mt-2 flex-shrink-0" />
                     Includes certificate of authenticity
                   </li>
-                  <li className="flex items-start gap-2">
-                    <span className="w-1 h-1 rounded-full bg-[var(--muted-foreground)] mt-2 flex-shrink-0" />
-                    Arrives in our signature velvet box
-                  </li>
                 </ul>
               </Accordion>
 
               <Accordion title="Material & Care">
                 <p className="mb-3">
                   {product.material ? `Crafted in ${product.material}. ` : 'Crafted using the finest materials. '}
-                  Each piece is finished by hand to ensure exceptional quality.
+                  Each piece is finished by hand to ensure exceptional quality and attention to detail.
                 </p>
                 <p>
                   To preserve its brilliance, avoid exposure to perfume, chlorine, and harsh
-                  chemicals. Clean gently with a soft polishing cloth.
+                  chemicals. Clean gently with a soft polishing cloth. For professional deep 
+                  cleaning, we recommend visiting any AMEYA boutique.
                 </p>
               </Accordion>
 
               <Accordion title="Shipping & Returns">
                 <p className="mb-3">
-                  Complimentary shipping on all US orders. International shipping available.
-                  Orders ship within 1–2 business days in our signature packaging.
+                  Complimentary concierge shipping on all US orders. International shipping 
+                  is available for our global clients. Orders ship within 1–2 business days 
+                  in our signature AMEYA New York packaging.
                 </p>
                 <p>
-                  We offer complimentary returns within 30 days of delivery. Items must be
-                  unworn and in original packaging.
+                  We offer complimentary returns and exchanges within 30 days of delivery. 
+                  Items must be in original, unworn condition.
                 </p>
               </Accordion>
 
               <Accordion title="Size Guide">
                 <p className="mb-3">
-                  Complimentary sizing service available at any AMEYA boutique. We recommend
-                  visiting us in person for the most accurate fit.
+                  Complimentary sizing service is available at any AMEYA boutique to ensure 
+                  the perfect fit for your new piece.
                 </p>
                 <p>
-                  For remote assistance, our advisors are available to guide you through our
-                  sizing process — contact us via phone or email.
+                  For remote assistance, our advisors are available to guide you through our 
+                  proprietary sizing process — please contact us via phone or email for 
+                  a personalized consultation.
                 </p>
               </Accordion>
 
@@ -330,6 +368,21 @@ function RecommendationSections({
     toggleWishlist,
     isInWishlist
   } = useWishlist();
+  const [liveProducts, setLiveProducts] = useState([]);
+
+  useEffect(() => {
+    const fetchAllProducts = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/products');
+        const data = await response.json();
+        setLiveProducts(data);
+      } catch (err) {
+        console.error('Error fetching recos:', err);
+      }
+    };
+    fetchAllProducts();
+  }, []);
+
   const collection = product.collection ? collections.find(c => c.slug === product.collection) : null;
   const collectionName = collection?.name ?? 'this collection';
 
@@ -340,18 +393,19 @@ function RecommendationSections({
    * Priority 2 — same collection, any other item (fallback for single-category collections)
    */
   const youMayAlsoLike = useMemo(() => {
-    const crossCategory = products.filter(p => p.id !== product.id && p.collection === product.collection && p.category !== product.category);
+    if (liveProducts.length === 0) return [];
+    const crossCategory = liveProducts.filter(p => p.id !== product.id && p.collection === product.collection && p.category !== product.category);
     if (crossCategory.length > 0) return crossCategory.slice(0, 4);
     // fallback: same collection, different item (single-category collections)
-    return products.filter(p => p.id !== product.id && p.collection === product.collection).slice(0, 4);
-  }, [product]);
+    return liveProducts.filter(p => p.id !== product.id && p.collection === product.collection).slice(0, 4);
+  }, [product, liveProducts]);
 
   /*
    * "Discover More From This Collection"
    * All remaining collection items not yet shown above
    */
   const shownIds = useMemo(() => new Set([product.id, ...youMayAlsoLike.map(p => p.id)]), [product.id, youMayAlsoLike]);
-  const discoverMore = useMemo(() => products.filter(p => p.collection === product.collection && !shownIds.has(p.id)).slice(0, 8), [product, shownIds]);
+  const discoverMore = useMemo(() => liveProducts.filter(p => p.collection === product.collection && !shownIds.has(p.id)).slice(0, 8), [product, shownIds, liveProducts]);
   if (!youMayAlsoLike.length && !discoverMore.length) return null;
   return <div>
 
@@ -462,7 +516,7 @@ function RecoCard({
       <div className="relative overflow-hidden aspect-[3/4] cursor-pointer" style={{
       background: imgBg
     }} onClick={() => openQuickView(product)}>
-        <img src={product.image} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]" />
+        <img src={getImageUrl(product.image)} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]" />
 
         {/* Category pill — top left */}
         <span className="absolute top-3 left-3 z-10 bg-white/90 backdrop-blur-sm text-[var(--foreground)] text-[9px] uppercase tracking-[0.18em] px-2.5 py-[5px] pointer-events-none">

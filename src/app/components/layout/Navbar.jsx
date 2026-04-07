@@ -12,6 +12,8 @@ export function Navbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const location = useLocation();
+  const [dynamicCategories, setDynamicCategories] = useState([]);
+  const [dynamicCollections, setDynamicCollections] = useState([]);
   const {
     user,
     logout
@@ -31,6 +33,23 @@ export function Navbar() {
   useEffect(() => {
     setIsSheetOpen(false);
   }, [location]);
+
+  useEffect(() => {
+    const fetchTaxonomy = async () => {
+      try {
+        const [catRes, colRes] = await Promise.all([
+          fetch('http://localhost:5000/api/homepage/categories/all'),
+          fetch('http://localhost:5000/api/homepage/collections/all')
+        ]);
+        const [cats, cols] = await Promise.all([catRes.json(), colRes.json()]);
+        setDynamicCategories(cats);
+        setDynamicCollections(cols);
+      } catch (err) {
+        console.error('Navbar fetch error:', err);
+      }
+    };
+    fetchTaxonomy();
+  }, []);
   return <>
       <header className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${isScrolled ? 'bg-[var(--background)]/90 backdrop-blur-md shadow-sm py-3' : 'bg-transparent py-6'}`}>
         <div className="container mx-auto px-4 md:px-8 flex items-center justify-between">
@@ -62,10 +81,19 @@ export function Navbar() {
                       </AccordionTrigger>
                       <AccordionContent>
                         <div className="flex flex-col space-y-4 py-2 pl-0 sm:pl-4">
-                          <Link to="/collection/eclat-initial" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)] text-center sm:text-left">Eclat Initial</Link>
-                          <Link to="/collection/eleve" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)] text-center sm:text-left">Eleve</Link>
-                          <Link to="/collection/love-engagement" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)] text-center sm:text-left">Love and Engagement</Link>
-                          <Link to="/collection/apex-spark" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)] text-center sm:text-left">Apex Spark</Link>
+                          {dynamicCollections.length > 0 ? (
+                            dynamicCollections.map(col => (
+                              <Link 
+                                key={col.slug} 
+                                to={`/collection/${col.slug}`} 
+                                className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)] text-center sm:text-left"
+                              >
+                                {col.name}
+                              </Link>
+                            ))
+                          ) : (
+                            <p className="text-xs text-neutral-400 italic">No collections found</p>
+                          )}
                         </div>
                       </AccordionContent>
                     </AccordionItem>
@@ -76,11 +104,19 @@ export function Navbar() {
                       </AccordionTrigger>
                       <AccordionContent>
                         <div className="flex flex-col space-y-4 py-2 pl-0 sm:pl-4">
-                          <Link to="/category/rings" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)] text-center sm:text-left">Rings</Link>
-                          <Link to="/category/earrings" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)] text-center sm:text-left">Earrings</Link>
-                          <Link to="/category/bracelets" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)] text-center sm:text-left">Bracelets & Bangles</Link>
-                          <Link to="/category/necklaces" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)] text-center sm:text-left">Pendants & Necklaces</Link>
-                          <Link to="/category/sets" className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)] text-center sm:text-left">Sets</Link>
+                          {dynamicCategories.length > 0 ? (
+                            dynamicCategories.map(cat => (
+                              <Link 
+                                key={cat.slug} 
+                                to={`/category/${cat.slug}`} 
+                                className="hover:text-[var(--primary)] transition-colors text-sm text-[var(--muted-foreground)] text-center sm:text-left"
+                              >
+                                {cat.name}
+                              </Link>
+                            ))
+                          ) : (
+                            <p className="text-xs text-neutral-400 italic">No categories found</p>
+                          )}
                         </div>
                       </AccordionContent>
                     </AccordionItem>

@@ -1,17 +1,38 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, X, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router';
 import { products, categories } from '../../data';
+import { getImageUrl } from '../../utils/image';
+
 export function SearchOverlay({
   isOpen,
   onClose
 }) {
   const [query, setQuery] = useState('');
+  const [liveProducts, setLiveProducts] = useState([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      const fetchAllProducts = async () => {
+        try {
+          const response = await fetch('http://localhost:5000/api/products');
+          const data = await response.json();
+          setLiveProducts(data);
+        } catch (err) {
+          console.error('Error fetching search products:', err);
+          setLiveProducts(products); // fallback
+        }
+      };
+      fetchAllProducts();
+    }
+  }, [isOpen]);
+
   const filteredProducts = useMemo(() => {
     if (!query) return [];
-    return products.filter(p => p.name.toLowerCase().includes(query.toLowerCase()) || p.category.toLowerCase().includes(query.toLowerCase()));
-  }, [query]);
+    const searchLow = query.toLowerCase();
+    return liveProducts.filter(p => p.name.toLowerCase().includes(searchLow) || p.category.toLowerCase().includes(searchLow) || (p.product_id && p.product_id.toLowerCase().includes(searchLow)));
+  }, [query, liveProducts]);
   const filteredCategories = useMemo(() => {
     if (!query) return categories;
     return categories.filter(c => c.name.toLowerCase().includes(query.toLowerCase()));
@@ -74,9 +95,9 @@ export function SearchOverlay({
                 <div>
                   <h3 className="text-xs uppercase tracking-wider font-semibold text-[var(--muted-foreground)] mb-4">Products</h3>
                   {filteredProducts.length > 0 ? <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {filteredProducts.map(product => <Link key={product.id} to={`/product/${product.id}`} onClick={onClose} className="flex items-center gap-4 p-3 rounded-lg hover:bg-[var(--muted)]/50 transition-colors group">
+                      {filteredProducts.map(product => <Link key={product.id} to={`/product/${product.product_id || product.id}`} onClick={onClose} className="flex items-center gap-4 p-3 rounded-lg hover:bg-[var(--muted)]/50 transition-colors group">
                           <div className="w-16 h-16 bg-[var(--muted)] rounded-md overflow-hidden flex-shrink-0">
-                            <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                            <img src={getImageUrl(product.image)} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <h4 className="font-serif text-lg text-[var(--foreground)] truncate group-hover:text-[var(--primary)] transition-colors">{product.name}</h4>

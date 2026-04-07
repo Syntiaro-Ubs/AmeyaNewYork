@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { getImageUrl } from '../utils/image';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trash2, Plus, Minus, ArrowRight, ShieldCheck, Lock } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
@@ -12,16 +13,37 @@ export function Cart() {
     removeFromCart
   } = useCart();
   const [isUpdating, setIsUpdating] = useState(null);
+  const [liveProducts, setLiveProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Derive full product details for cart items
-  const cartProducts = cartItems.map(item => {
-    const product = products.find(p => p.id === item.productId);
-    return {
-      ...item,
-      product
+  useEffect(() => {
+    const fetchAllProducts = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/products');
+        const data = await response.json();
+        setLiveProducts(data);
+      } catch (err) {
+        console.error('Error fetching cart products:', err);
+        setLiveProducts(products); // fallback
+      } finally {
+        setLoading(false);
+      }
     };
-  }).filter(item => item.product !== undefined);
+    fetchAllProducts();
+  }, []);
+
+  // Derive full product details for cart items
+  const cartProducts = useMemo(() => {
+    return cartItems.map(item => {
+      const product = liveProducts.find(p => String(p.id) === String(item.productId) || String(p.product_id) === String(item.productId));
+      return {
+        ...item,
+        product
+      };
+    }).filter(item => item.product !== undefined);
+  }, [cartItems, liveProducts]);
+
   const subtotal = cartProducts.reduce((sum, item) => {
     return sum + item.product.price * item.quantity;
   }, 0);
@@ -95,7 +117,7 @@ export function Cart() {
               }} className="flex flex-col sm:flex-row gap-6 bg-white dark:bg-[var(--card)] p-6 border border-[var(--border)] rounded-sm relative">
                     {/* Product Image */}
                     <div className="w-full sm:w-32 h-32 md:h-40 bg-[var(--secondary)] flex-shrink-0 overflow-hidden rounded-sm">
-                      <img src={item.product.image} alt={item.product.name} className="w-full h-full object-cover" />
+                      <img src={getImageUrl(item.product.image)} alt={item.product.name} className="w-full h-full object-cover" />
                     </div>
 
                     {/* Product Details */}
@@ -103,7 +125,7 @@ export function Cart() {
                       <div>
                         <div className="flex justify-between items-start mb-2">
                           <h3 className="font-serif text-xl text-[var(--foreground)] pr-8">
-                            <Link to={`/product/${item.product.id}`} className="hover:text-[var(--primary)] transition-colors">
+                            <Link to={`/product/${item.product.product_id || item.product.id}`} className="hover:text-[var(--primary)] transition-colors">
                               {item.product.name}
                             </Link>
                           </h3>

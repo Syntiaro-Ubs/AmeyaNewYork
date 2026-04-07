@@ -14,6 +14,16 @@ export function AuthProvider({
     setUser(userData);
     localStorage.setItem('user', JSON.stringify(userData));
   };
+  const updateUser = updatedData => {
+    setUser(prev => {
+      const newUser = {
+        ...prev,
+        ...updatedData
+      };
+      localStorage.setItem('user', JSON.stringify(newUser));
+      return newUser;
+    });
+  };
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
@@ -21,6 +31,7 @@ export function AuthProvider({
   return <AuthContext.Provider value={{
     user,
     login,
+    updateUser,
     logout,
     isAuthenticated: !!user
   }}>

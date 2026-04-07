@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { getImageUrl } from '../utils/image';
 import { useParams, Link } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { products, categories, collections } from '../data';
@@ -16,8 +17,9 @@ const getCategoryImage = slug => categories.find(c => c.slug === slug)?.image ||
 const getCollectionImage = slug => collections.find(c => c.slug === slug)?.image || FALLBACK_IMAGE;
 const getCollectionHoverImage = slug => collections.find(c => c.slug === slug)?.hoverImage || FALLBACK_IMAGE;
 
-/* ── Lifestyle editorial images (in-grid Shop the Look cards) ── */
-const EDITORIAL_IMAGES = [getCollectionHoverImage('eclat-initial'), getCollectionHoverImage('eleve'), getCollectionHoverImage('love-engagement')];
+const EDITORIAL_API_URL = 'http://localhost:5000/api/editorial';
+const BANNERS_API_URL = 'http://localhost:5000/api/banners';
+
 
 /* ── Per-slug hero banner images ── */
 const BANNER_IMAGES = {
@@ -70,7 +72,20 @@ function ProductCard({
   const {
     openQuickView
   } = useQuickView();
-  const wishlisted = isInWishlist(product.id);
+  const idValue = product.product_id || product.id;
+  const wishlisted = isInWishlist(idValue);
+  
+  const images = useMemo(() => {
+    const list = product.image ? [getImageUrl(product.image)] : [];
+    if (product.gallery) {
+      const gallery = typeof product.gallery === 'string' ? JSON.parse(product.gallery) : product.gallery;
+      if (Array.isArray(gallery)) {
+        gallery.forEach(img => list.push(getImageUrl(img)));
+      }
+    }
+    return list;
+  }, [product]);
+
   const collectionInfo = product.collection ? collections.find(c => c.slug === product.collection) : null;
   return <motion.div initial={{
     opacity: 0,
@@ -85,15 +100,15 @@ function ProductCard({
   }} className="group">
       {/* Image area — click opens Quick View */}
       <div className="relative overflow-hidden bg-[#f5f4f2] aspect-[3/4] cursor-pointer" onClick={() => openQuickView(product)}>
-        <img src={product.image} alt={product.name} className="w-full h-full object-cover transition-opacity duration-500 group-hover:opacity-0" />
+        <img src={images[0]} alt={product.name} className="w-full h-full object-cover transition-opacity duration-500 group-hover:opacity-0" />
         
         {/* Hover image - model wearing jewelry */}
-        {product.gallery && product.gallery[1] && <img src={product.gallery[1]} alt={`${product.name} worn`} className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-500" />}
+        {images[1] && <img src={images[1]} alt={`${product.name} worn`} className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-500" />}
 
         {/* Wishlist heart — stops propagation so it doesn't open quick view */}
         <button onClick={e => {
         e.stopPropagation();
-        toggleWishlist(product.id);
+        toggleWishlist(idValue);
       }} className={`absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center transition-all duration-300 ${wishlisted ? 'opacity-100 text-[var(--primary)]' : 'opacity-0 group-hover:opacity-100 text-[var(--foreground)] hover:text-[var(--primary)]'}`} aria-label={wishlisted ? 'Remove from wishlist' : 'Save to wishlist'}>
           <Heart size={18} strokeWidth={1.5} fill={wishlisted ? 'currentColor' : 'none'} />
         </button>
@@ -111,7 +126,7 @@ function ProductCard({
         {collectionInfo && <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--muted-foreground)] mb-1.5">
             {collectionInfo.name}
           </p>}
-        <Link to={`/product/${product.id}`} className="block font-serif text-[var(--foreground)] hover:text-[var(--primary)] transition-colors duration-200 leading-snug mb-2">
+        <Link to={`/product/${idValue}`} className="block font-serif text-[var(--foreground)] hover:text-[var(--primary)] transition-colors duration-200 leading-snug mb-2">
           {product.name}
         </Link>
         <p className="text-[var(--muted-foreground)] text-sm">${product.price.toLocaleString()}</p>
@@ -265,24 +280,17 @@ export function Category() {
     collection: true,
     category: true
   });
+  const [editorialCards, setEditorialCards] = useState([]);
+  const [dynamicBanner, setDynamicBanner] = useState(null);
   const [bannerLoaded, setBannerLoaded] = useState(false);
+  const [liveProducts, setLiveProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const toggleSection = key => setOpenSections(prev => ({
     ...prev,
     [key]: !prev[key]
   }));
-  const sortOptions = [{
-    label: 'Recommended',
-    value: 'recommended'
-  }, {
-    label: 'Price: Low to High',
-    value: 'price-asc'
-  }, {
-    label: 'Price: High to Low',
-    value: 'price-desc'
-  }, {
-    label: 'Newest',
-    value: 'newest'
-  }];
+
   useEffect(() => {
     setSelectedCategories([]);
     setSelectedCollections([]);
@@ -290,7 +298,52 @@ export function Category() {
     setSortBy('recommended');
     setShowFilterSidebar(false);
     setBannerLoaded(false);
+    
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([
+        fetchEditorial(),
+        fetchDynamicBanner(),
+        fetchProducts()
+      ]);
+      setLoading(false);
+    };
+    
+    loadData();
   }, [slug]);
+
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/products');
+      const data = await response.json();
+      setLiveProducts(data);
+    } catch (error) {
+      console.error('Failed to fetch products', error);
+      // Fallback to static data if API fails
+      setLiveProducts(products);
+    }
+  };
+
+  const fetchDynamicBanner = async () => {
+    try {
+      const response = await fetch(`${BANNERS_API_URL}/${slug}`);
+      const data = await response.json();
+      setDynamicBanner(data);
+    } catch (error) {
+      console.error('Failed to fetch banner', error);
+    }
+  };
+
+  const fetchEditorial = async () => {
+    try {
+      const response = await fetch(`${EDITORIAL_API_URL}/${slug}`);
+      const data = await response.json();
+      setEditorialCards(data);
+    } catch (error) {
+      console.error('Failed to fetch editorial cards', error);
+    }
+  };
+
   useEffect(() => {
     document.body.style.overflow = showFilterSidebar ? 'hidden' : '';
     return () => {
@@ -309,31 +362,31 @@ export function Category() {
   if (slug === 'new-arrivals') {
     title = 'Experience Luxury Like Never Before';
     description = 'Discover our latest creations, fresh from the atelier. Each piece crafted with precision and passion.';
-    baseProducts = products.filter(p => p.isNew);
+    baseProducts = liveProducts;
   } else if (slug === 'bestsellers') {
     title = 'Bestsellers';
     description = 'Our most coveted pieces, loved by you.';
-    baseProducts = products.filter(p => p.isBestSeller);
+    baseProducts = liveProducts.filter(p => p.featured);
   } else {
     const category = categories.find(c => c.slug === slug);
     if (category) {
       title = category.name;
       description = `Explore our exquisite collection of ${category.name.toLowerCase()}.`;
-      baseProducts = products.filter(p => p.category.toLowerCase() === category.name.toLowerCase());
+      baseProducts = liveProducts.filter(p => p.category?.toLowerCase() === category.slug.toLowerCase() || p.category?.toLowerCase() === category.name.toLowerCase());
       pageCollectionImage = category.image;
-      pageCollectionHoverImage = category.hoverImage;
+      pageCollectionHoverImage = category.image;
       pageCollectionLabel = category.name;
-      collectionHref = `/category/${slug}`;
+      collectionHref = `/category/${category.slug}`;
     } else {
       const collection = collections.find(c => c.slug === slug);
       if (collection) {
         title = collection.name;
         description = collection.description;
-        baseProducts = products.filter(p => p.collection === collection.slug);
+        baseProducts = liveProducts.filter(p => p.collection?.toLowerCase() === collection.slug.toLowerCase());
         pageCollectionImage = collection.image;
-        pageCollectionHoverImage = collection.hoverImage;
+        pageCollectionHoverImage = collection.hoverImage || collection.image;
         pageCollectionLabel = collection.name;
-        collectionHref = `/category/${slug}`;
+        collectionHref = `/collection/${slug}`;
       } else {
         title = 'Collection Not Found';
         description = 'The collection you are looking for does not exist.';
@@ -368,9 +421,24 @@ export function Category() {
   }, [baseProducts]);
 
   /* ── Filter + Sort ── */
+  const sortOptions = [{
+    label: 'Recommended',
+    value: 'recommended'
+  }, {
+    label: 'Price: Low to High',
+    value: 'price-asc'
+  }, {
+    label: 'Price: High to Low',
+    value: 'price-desc'
+  }, {
+    label: 'Newest',
+    value: 'newest'
+  }];
+
+  /* ── Filter + Sort ── */
   const filteredProducts = baseProducts.filter(product => {
-    if (selectedCategories.length > 0 && !selectedCategories.includes(product.category)) return false;
-    if (selectedCollections.length > 0 && !selectedCollections.some(col => product.collection === col)) return false;
+    if (selectedCategories.length > 0 && !selectedCategories.some(cat => product.category?.toLowerCase() === cat.toLowerCase())) return false;
+    if (selectedCollections.length > 0 && !selectedCollections.some(col => product.collection?.toLowerCase() === col.toLowerCase())) return false;
     if (selectedMaterials.length > 0 && !selectedMaterials.some(mat => (product.material || '').toLowerCase().includes(mat.toLowerCase()))) return false;
     return true;
   });
@@ -381,7 +449,7 @@ export function Category() {
       case 'price-desc':
         return b.price - a.price;
       case 'newest':
-        return (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0);
+        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
       default:
         return 0;
     }
@@ -436,16 +504,17 @@ export function Category() {
       }
 
       // Shop-the-look row: takes next 2 products
-      if (cursor < sortedProducts.length) {
+      if (cursor < sortedProducts.length && editorialCards.length > 0) {
         const p1 = sortedProducts[cursor];
         const p2 = sortedProducts[cursor + 1];
         const shopStart = cursor;
         cursor += p1 ? 1 : 0;
         cursor += p2 ? 1 : 0;
 
-        // Choose editorial image: use collection hover image on first break, then rotate through hover images
-        const imgIndex = editorialCount % EDITORIAL_IMAGES.length;
-        const editorialImg = editorialCount === 0 && pageCollectionHoverImage ? pageCollectionHoverImage : EDITORIAL_IMAGES[imgIndex];
+        // Choose editorial image from dynamic cards
+        const card = editorialCards[editorialCount % editorialCards.length];
+        const editorialImg = card ? `http://localhost:5000${card.image_url}` : pageCollectionHoverImage;
+        
         result.push({
           type: 'shoprow',
           p1,
@@ -458,10 +527,22 @@ export function Category() {
           isInWishlist
         });
         editorialCount++;
+      } else if (cursor < sortedProducts.length && editorialCards.length === 0) {
+        // Carry on with normal rows if no editorial cards exist
+        const extraNormal = sortedProducts.slice(cursor, cursor + 3);
+        const extraStart = cursor;
+        cursor += extraNormal.length;
+        if (extraNormal.length > 0) {
+          result.push({
+            type: 'normal',
+            items: extraNormal,
+            startIndex: extraStart
+          });
+        }
       }
     }
     return result;
-  }, [sortedProducts, pageCollectionImage, addToCart, toggleWishlist, isInWishlist]);
+  }, [sortedProducts, pageCollectionImage, pageCollectionHoverImage, editorialCards, addToCart, toggleWishlist, isInWishlist]);
 
   /* ── Sidebar content ── */
   const sidebarContent = <>
@@ -487,9 +568,33 @@ export function Category() {
           HERO BANNER - FIXED VIDEO BACKGROUND
        ══════════════════════════════════════ */}
       <div className="relative">
-        {/* Fixed Video Background */}
-        <div className="fixed top-0 left-0 w-full h-screen overflow-hidden z-0">
-          {HERO_MEDIA_DISABLED_SLUGS.has(slug) ? (
+        {/* Fixed Background */}
+        <div className="fixed top-0 left-0 w-full h-screen overflow-hidden z-0 bg-neutral-900">
+          {dynamicBanner ? (
+            dynamicBanner.media_type === 'video' ? (
+              <>
+                <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="absolute inset-0 w-full h-full object-cover"
+                  style={{ objectPosition: dynamicBanner.focal_point }}
+                  onLoadedData={() => setBannerLoaded(true)}
+                  src={`http://localhost:5000${dynamicBanner.media_url}`}
+                />
+                <div className="absolute inset-0 bg-black/40 transition-opacity duration-700" style={{ opacity: bannerLoaded ? 1 : 0 }} />
+              </>
+            ) : (
+              <img
+                src={`http://localhost:5000${dynamicBanner.media_url}`}
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${bannerLoaded ? 'opacity-100' : 'opacity-0'}`}
+                style={{ objectPosition: dynamicBanner.focal_point }}
+                onLoad={() => setBannerLoaded(true)}
+                alt="Banner"
+              />
+            )
+          ) : HERO_MEDIA_DISABLED_SLUGS.has(slug) ? (
             <div className="absolute inset-0 bg-gradient-to-br from-[#0e0e0e] via-[#1c1c1c] to-[#0e0e0e]" />
           ) : (slug === 'new-arrivals' || slug === 'apex-spark') ? (
             <>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router';
-import { ArrowRight, Mail, Lock, User, Check } from 'lucide-react';
+import { ArrowRight, Mail, Lock, User, Check, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 import loginImage from '../../assets/collection/Love and Engagement/D1M.JPG';
@@ -12,6 +12,7 @@ export function Login() {
   const [name, setName] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const {
     login
@@ -25,11 +26,15 @@ export function Login() {
 
     // Simulate authentication
     setTimeout(() => {
-      login({
-        id: '1',
+      const userData = {
+        id: isLogin ? '1' : Date.now().toString(),
         name: name || 'Valued Customer',
-        email: email
-      });
+        email: email,
+        phone: '',
+        gender: '',
+        addresses: []
+      };
+      login(userData);
       toast.success(isLogin ? "Welcome back!" : "Account created successfully!");
       navigate('/');
     }, 800);
@@ -114,7 +119,14 @@ export function Login() {
               </div>
               <div className="relative group">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] w-4 h-4 group-focus-within:text-[var(--primary)] transition-colors" />
-                <input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-transparent border-b border-[var(--border)] px-10 py-3 text-sm focus:outline-none focus:border-[var(--primary)] transition-colors rounded-none placeholder:text-[var(--muted-foreground)]/50" placeholder="••••••••" required />
+                <input id="password" type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-transparent border-b border-[var(--border)] px-10 py-3 text-sm focus:outline-none focus:border-[var(--primary)] transition-colors rounded-none placeholder:text-[var(--muted-foreground)]/50" placeholder="••••••••" required />
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
 

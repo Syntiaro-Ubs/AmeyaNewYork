@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+import { getImageUrl } from '../utils/image';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { Heart } from 'lucide-react';
@@ -14,7 +16,20 @@ export function ProductCard({
   const {
     openQuickView
   } = useQuickView();
-  const wishlisted = isInWishlist(product.id);
+  const idValue = product.product_id || product.id;
+  const wishlisted = isInWishlist(idValue);
+
+  const images = useMemo(() => {
+    if (!product) return [];
+    const list = product.image ? [getImageUrl(product.image)] : [];
+    if (product.gallery) {
+      const gallery = Array.isArray(product.gallery) ? product.gallery : (typeof product.gallery === 'string' ? JSON.parse(product.gallery) : []);
+      const galleryList = gallery.map(img => getImageUrl(img));
+      return [...list, ...galleryList];
+    }
+    return list;
+  }, [product]);
+
   return <motion.div initial={{
     opacity: 0,
     y: 30
@@ -31,15 +46,15 @@ export function ProductCard({
       {/* ── Image area — click opens Quick View ── */}
       <div className="relative aspect-[3/4.5] overflow-hidden cursor-pointer" onClick={() => openQuickView(product)}>
         {/* Default image - jewelry close-up */}
-        <img src={product.image} alt={product.name} className="w-full h-full object-cover transition-opacity duration-500 group-hover:opacity-0" />
+        <img src={images[0]} alt={product.name} className="w-full h-full object-cover transition-opacity duration-500 group-hover:opacity-0" />
         
         {/* Hover image - model wearing jewelry */}
-        {product.gallery && product.gallery[1] && <img src={product.gallery[1]} alt={`${product.name} worn`} className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-500" />}
+        {images[1] && <img src={images[1]} alt={`${product.name} worn`} className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-500" />}
 
         {/* Wishlist heart — always accessible, stops propagation */}
         <button onClick={e => {
         e.stopPropagation();
-        toggleWishlist(product.id);
+        toggleWishlist(idValue);
       }} className={`absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center transition-all duration-300 ${wishlisted ? 'opacity-100 text-[var(--primary)]' : 'opacity-0 group-hover:opacity-100 text-[var(--foreground)] hover:text-[var(--primary)]'}`} aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}>
           <Heart size={16} strokeWidth={1.5} fill={wishlisted ? 'currentColor' : 'none'} />
         </button>

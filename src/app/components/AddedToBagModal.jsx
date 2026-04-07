@@ -1,4 +1,5 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { getImageUrl } from '../utils/image';
 import { Link, useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ShoppingBag, ArrowRight, Check } from 'lucide-react';
@@ -12,11 +13,33 @@ export function AddedToBagModal() {
     cartCount
   } = useCart();
   const navigate = useNavigate();
-  const product = products.find(p => p.id === lastAddedProductId) ?? null;
+  const [liveProducts, setLiveProducts] = useState([]);
+
+  useEffect(() => {
+    if (isAddedModalOpen) {
+      const fetchAllProducts = async () => {
+        try {
+          const response = await fetch('http://localhost:5000/api/products');
+          const data = await response.json();
+          setLiveProducts(data);
+        } catch (err) {
+          console.error('Error fetching modal products:', err);
+          setLiveProducts(products); // fallback
+        }
+      };
+      fetchAllProducts();
+    }
+  }, [isAddedModalOpen]);
+
+  const product = useMemo(() => {
+    return liveProducts.find(p => String(p.id) === String(lastAddedProductId) || String(p.product_id) === String(lastAddedProductId)) ?? null;
+  }, [lastAddedProductId, liveProducts]);
+
   const suggestions = useMemo(() => {
     if (!product) return [];
-    return products.filter(p => p.id !== product.id && (p.collection === product.collection || p.category === product.category)).slice(0, 4);
-  }, [product]);
+    return liveProducts.filter(p => (String(p.id) !== String(product.id)) && (p.collection === product.collection || p.category === product.category)).slice(0, 4);
+  }, [product, liveProducts]);
+
   useEffect(() => {
     document.body.style.overflow = isAddedModalOpen ? 'hidden' : '';
     return () => {
@@ -94,7 +117,7 @@ export function AddedToBagModal() {
 
                     <div className="flex gap-5 mb-8">
                       <div className="w-[100px] h-[120px] flex-shrink-0 bg-white overflow-hidden border border-[#e8e4de]">
-                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                        <img src={getImageUrl(product.image)} alt={product.name} className="w-full h-full object-cover" />
                       </div>
                       <div className="flex flex-col justify-between flex-1 py-1">
                         <div>
@@ -140,7 +163,7 @@ export function AddedToBagModal() {
                     </h2>
 
                     <div className="grid grid-cols-2 gap-4">
-                      {suggestions.map(item => <SuggestionCard key={item.id} product={item} onClose={closeAddedModal} />)}
+                      {suggestions.map(item => <SuggestionCard key={item.id} product={item} onClose={closeAddedModal} getImageUrl={getImageUrl} />)}
                     </div>
                   </div>
                 </div>
@@ -159,7 +182,8 @@ export function AddedToBagModal() {
 }
 function SuggestionCard({
   product,
-  onClose
+  onClose,
+  getImageUrl
 }) {
   const {
     addToCart
@@ -174,20 +198,20 @@ function SuggestionCard({
     duration: 0.3,
     delay: 0.1
   }} className="group flex flex-col">
-      <Link to={`/product/${product.id}`} onClick={onClose} className="block relative aspect-[4/5] bg-[#f5f4f0] overflow-hidden mb-3">
-        <img src={product.image} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]" />
+      <Link to={`/product/${product.product_id || product.id}`} onClick={onClose} className="block relative aspect-[4/5] bg-[#f5f4f0] overflow-hidden mb-3">
+        <img src={getImageUrl(product.image)} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]" />
         <div className="absolute inset-x-0 bottom-0 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
           <button onClick={e => {
           e.preventDefault();
           e.stopPropagation();
-          addToCart(product.id, 1);
+          addToCart(product.product_id || product.id, 1);
         }} className="w-full py-2.5 bg-[var(--foreground)] text-white text-[10px] uppercase tracking-[0.2em] hover:opacity-80 transition-opacity">
             Add to Bag
           </button>
         </div>
       </Link>
 
-      <Link to={`/product/${product.id}`} onClick={onClose} className="font-serif text-[var(--foreground)] text-sm leading-snug hover:text-[var(--primary)] transition-colors mb-1">
+      <Link to={`/product/${product.product_id || product.id}`} onClick={onClose} className="font-serif text-[var(--foreground)] text-sm leading-snug hover:text-[var(--primary)] transition-colors mb-1">
         {product.name}
       </Link>
 

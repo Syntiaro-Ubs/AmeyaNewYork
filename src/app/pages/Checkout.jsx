@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { getImageUrl } from '../utils/image';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useNavigate } from 'react-router';
 import { ChevronRight, Lock, ShieldCheck, Check, Package, CreditCard, Truck, ChevronLeft } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useOrders } from '../context/OrderContext';
 import { products } from '../data';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -35,10 +37,32 @@ export function Checkout() {
     cartItems,
     clearCart
   } = useCart();
-  const cartProducts = cartItems.map(item => ({
-    ...item,
-    product: products.find(p => p.id === item.productId)
-  })).filter(i => i.product);
+  const [liveProducts, setLiveProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAllProducts = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/products');
+        const data = await response.json();
+        setLiveProducts(data);
+      } catch (err) {
+        console.error('Error fetching checkout products:', err);
+        setLiveProducts(products); // fallback
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAllProducts();
+  }, []);
+
+  const cartProducts = useMemo(() => {
+    return cartItems.map(item => ({
+      ...item,
+      product: liveProducts.find(p => String(p.id) === String(item.productId) || String(p.product_id) === String(item.productId))
+    })).filter(i => i.product);
+  }, [cartItems, liveProducts]);
+
   const subtotal = cartProducts.reduce((s, i) => s + i.product.price * i.quantity, 0);
   const tax = subtotal * 0.08875;
   const total = subtotal + tax;
@@ -95,6 +119,8 @@ export function Checkout() {
     setErrors(e);
     return Object.keys(e).length === 0;
   };
+  const { addOrder } = useOrders();
+
   const handleNext = () => {
     if (step === 'contact') {
       if (!validateShipping()) return;
@@ -105,6 +131,20 @@ export function Checkout() {
       });
     } else if (step === 'payment') {
       if (!validatePayment()) return;
+      
+      // Save order to context
+      addOrder({
+        items: cartProducts.map(cp => ({
+          name: cp.product.name,
+          price: cp.product.price,
+          image: cp.product.image,
+          quantity: cp.quantity
+        })),
+        total: total,
+        shippingAddress: shipping,
+        paymentMethod: 'Credit Card' // Mock for now
+      });
+
       clearCart?.();
       setStep('confirmation');
       window.scrollTo({
@@ -599,7 +639,7 @@ function OrderSummary({
               <div className="divide-y divide-[var(--border)] max-h-72 overflow-y-auto">
                 {cartProducts.map(item => <div key={item.id} className="flex gap-3 px-6 py-4">
                     <div className="relative flex-shrink-0">
-                      <img src={item.product.image} alt={item.product.name} className="w-16 h-16 object-cover bg-[var(--secondary)]" />
+                      <img src={getImageUrl(item.product.image)} alt={item.product.name} className="w-16 h-16 object-cover bg-[var(--secondary)]" />
                       <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-[var(--primary)] text-white text-[10px] flex items-center justify-center">{item.quantity}</span>
                     </div>
                     <div className="flex-1 min-w-0">
