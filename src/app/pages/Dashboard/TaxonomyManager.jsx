@@ -7,19 +7,19 @@ import {
   AlertCircle,
   RefreshCw,
   Save,
-  Upload,
-  Image as ImageIcon
+  Edit2,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_BASE = 'http://localhost:5000/api/homepage';
-const UPLOAD_API = 'http://localhost:5000/api/homepage/upload';
 
 export const TaxonomyManager = () => {
   const [categories, setCategories] = useState([]);
   const [collections, setCollections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [savingItems, setSavingItems] = useState({});
+  const [editingId, setEditingId] = useState(null); // Tracks ID of item being edited
   const [newItem, setNewItem] = useState({ type: 'category', name: '', slug: '' });
 
   useEffect(() => {
@@ -95,29 +95,6 @@ export const TaxonomyManager = () => {
     }
   };
 
-  const handleUpload = async (type, id, field, file) => {
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('image', file);
-
-    try {
-      const response = await fetch(UPLOAD_API, {
-        method: 'POST',
-        body: formData
-      });
-      const data = await response.json();
-
-      if (response.ok) {
-        updateLocalItem(type, id, { [field]: data.media_url });
-        toast.success('Image uploaded successfully');
-      } else {
-        toast.error(data.message || 'Upload failed');
-      }
-    } catch (error) {
-      toast.error('Upload failed');
-    }
-  };
 
   const handleDelete = async (type, id) => {
     if (!window.confirm(`Are you sure you want to delete this ${type}?`)) return;
@@ -143,120 +120,94 @@ export const TaxonomyManager = () => {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
 
-  const renderImageCard = (type, item, field, label) => (
-    <div className="space-y-2">
-      <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest pl-1">
-        {label}
-      </label>
-      <div className="relative aspect-video bg-neutral-50 rounded-xl overflow-hidden border border-neutral-200 group">
-        {item[field] ? (
-          <img
-            src={`http://localhost:5000${item[field]}`}
-            alt={item.name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-neutral-300">
-            <ImageIcon size={18} />
-          </div>
-        )}
-        <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
-          <div className="flex items-center gap-2 text-white bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] font-medium border border-white/20">
-            <Upload size={12} />
-            {item[field] ? 'Replace Image' : 'Upload Image'}
-          </div>
-          <input
-            type="file"
-            className="sr-only"
-            onChange={e => handleUpload(type, item.id, field, e.target.files?.[0])}
-          />
-        </label>
-      </div>
-    </div>
-  );
-
-  const renderMetadataCard = (type, item) => {
+  const renderTaxonomyItem = (type, item) => {
     const saveKey = `${type}-${item.id}`;
     const isSaving = !!savingItems[saveKey];
+    const isEditing = editingId === item.id;
     const setter = type === 'category' ? setCategories : setCollections;
 
     const handleChange = (field, value) => {
       setter(prev => prev.map(entry => (entry.id === item.id ? { ...entry, [field]: value } : entry)));
     };
 
-    return (
-      <div key={item.id} className="p-5 border-b border-neutral-100 space-y-4">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium text-neutral-900">{item.name}</p>
-            <p className="text-[10px] text-neutral-400 font-mono">slug: {item.slug}</p>
-          </div>
-          <button
-            onClick={() => handleDelete(type, item.id)}
-            className="p-2 text-neutral-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
+    const handleCancel = () => {
+      setEditingId(null);
+      fetchData(); // Reset changes
+    };
 
-        <div className={`grid gap-4 ${type === 'collection' ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest pl-1">
-              Display Name
-            </label>
-            <input
-              type="text"
-              value={item.name || ''}
-              onChange={e => handleChange('name', e.target.value)}
-              className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-neutral-900 text-sm"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest pl-1">
-              Slug
-            </label>
-            <input
-              type="text"
-              value={item.slug || ''}
-              onChange={e => handleChange('slug', e.target.value)}
-              className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-neutral-900 text-sm font-mono text-neutral-500"
-            />
-          </div>
-
-          {type === 'category' && renderImageCard(type, item, 'image', 'Category Image')}
-        </div>
-
-        {type === 'collection' && (
-          <>
-            <div className="grid gap-4 md:grid-cols-2">
-              {renderImageCard(type, item, 'image', 'Primary Image')}
-              {renderImageCard(type, item, 'hover_image', 'Hover Image')}
-            </div>
-
-            <div className="space-y-2">
+    if (isEditing) {
+      return (
+        <div key={item.id} className="p-4 border-b border-neutral-100 bg-neutral-50/30 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest pl-1">
-                Description
+                Display Name
               </label>
-              <textarea
-                value={item.description || ''}
-                onChange={e => handleChange('description', e.target.value)}
-                rows={4}
-                className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-neutral-900 text-sm resize-none"
-                placeholder="Add collection copy for the storefront"
+              <input
+                type="text"
+                value={item.name || ''}
+                onChange={e => handleChange('name', e.target.value)}
+                className="w-full px-4 py-2 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-neutral-900 text-sm"
               />
             </div>
-          </>
-        )}
 
-        <div className="flex justify-end">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest pl-1">
+                URL Slug
+              </label>
+              <input
+                type="text"
+                value={item.slug || ''}
+                onChange={e => handleChange('slug', e.target.value)}
+                className="w-full px-4 py-2 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-neutral-900 text-sm font-mono text-neutral-500"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={handleCancel}
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-neutral-500 hover:text-neutral-700 text-xs font-medium"
+            >
+              <X size={14} /> Cancel
+            </button>
+            <button
+              onClick={async () => {
+                await handleSave(type, item);
+                setEditingId(null);
+              }}
+              disabled={isSaving}
+              className="inline-flex items-center gap-2 px-4 py-1.5 bg-neutral-900 text-white text-xs font-medium rounded-lg hover:bg-neutral-800 transition-colors disabled:opacity-50"
+            >
+              {isSaving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              {isSaving ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div key={item.id} className="p-4 border-b border-neutral-100 group hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-neutral-900">{item.name}</p>
+          <p className="text-[10px] text-neutral-400 font-mono italic">slug: {item.slug}</p>
+        </div>
+        
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
-            onClick={() => handleSave(type, item)}
-            disabled={isSaving}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-neutral-900 text-white text-sm font-medium rounded-xl hover:bg-neutral-800 transition-colors disabled:opacity-50"
+            onClick={() => setEditingId(item.id)}
+            className="p-2 text-neutral-400 hover:text-neutral-900 hover:bg-white rounded-lg transition-all border border-transparent hover:border-neutral-200"
+            title="Edit"
           >
-            {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {isSaving ? 'Saving...' : 'Save Changes'}
+            <Edit2 size={15} />
+          </button>
+          <button
+            onClick={() => handleDelete(type, item.id)}
+            className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all border border-transparent hover:border-red-100"
+            title="Delete"
+          >
+            <Trash2 size={15} />
           </button>
         </div>
       </div>
@@ -342,7 +293,7 @@ export const TaxonomyManager = () => {
             <span className="text-neutral-400 font-medium italic">{categories.length} total</span>
           </div>
           <div className="max-h-[700px] overflow-y-auto">
-            {categories.map(item => renderMetadataCard('category', item))}
+            {categories.map(item => renderTaxonomyItem('category', item))}
           </div>
         </div>
 
@@ -354,16 +305,16 @@ export const TaxonomyManager = () => {
             <span className="text-neutral-400 font-medium italic">{collections.length} total</span>
           </div>
           <div className="max-h-[700px] overflow-y-auto">
-            {collections.map(item => renderMetadataCard('collection', item))}
+            {collections.map(item => renderTaxonomyItem('collection', item))}
           </div>
         </div>
       </div>
 
-      <div className="bg-amber-50 rounded-2xl p-4 flex gap-3 border border-amber-100">
-        <AlertCircle className="w-5 h-5 text-amber-500 shrink-0" />
-        <p className="text-xs text-amber-700 leading-relaxed">
-          <strong>Important Note:</strong> Category and collection visuals are now backend-managed.
-          After uploading images here, save the item so the storefront can use the new metadata.
+      <div className="bg-neutral-50 rounded-2xl p-4 flex gap-3 border border-neutral-200">
+        <Tag className="w-5 h-5 text-neutral-400 shrink-0" />
+        <p className="text-xs text-neutral-500 leading-relaxed">
+          Manage your website's organization by adding, editing, or removing categories and collections.
+          These changes will reflect in the navigation and filter menus across the shop.
         </p>
       </div>
     </div>

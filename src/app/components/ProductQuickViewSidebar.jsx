@@ -14,47 +14,8 @@ const GALLERY_MODEL = collections[1]?.image || FALLBACK_IMAGE;
 const GALLERY_CLOSEUP = collections[2]?.image || FALLBACK_IMAGE;
 const GALLERY_LIFESTYLE = collections[0]?.image || FALLBACK_IMAGE;
 
-/* ── Material swatch palette ── */
-const ALL_SWATCHES = [{
-  label: '18k Yellow Gold',
-  short: 'Yellow',
-  color: '#D4AF37',
-  border: false
-}, {
-  label: '18k White Gold',
-  short: 'White',
-  color: '#E8E4E0',
-  border: true
-}, {
-  label: '18k Rose Gold',
-  short: 'Rose',
-  color: '#C89B94',
-  border: false
-}, {
-  label: 'Platinum',
-  short: 'Plat.',
-  color: '#DCDCDC',
-  border: true
-}, {
-  label: 'Sterling Silver',
-  short: 'Silver',
-  color: '#C0C0C0',
-  border: true
-}];
 
 /* ── Helpers ── */
-function detectActiveMaterials(material) {
-  if (!material) return [];
-  const m = material.toLowerCase();
-  const found = [];
-  if (m.includes('18k') && m.includes('yellow')) found.push('18k Yellow Gold');
-  if (m.includes('18k') && m.includes('white')) found.push('18k White Gold');
-  if (m.includes('18k') && m.includes('rose')) found.push('18k Rose Gold');
-  if (m.includes('platinum')) found.push('Platinum');
-  if (m.includes('sterling silver')) found.push('Sterling Silver');
-  if (found.length === 0 && m.includes('18k')) found.push('18k Yellow Gold');
-  return found;
-}
 function detectStones(material) {
   if (!material) return [];
   const m = material.toLowerCase();
@@ -145,7 +106,6 @@ function QuickViewContent({
   const idValue = product.product_id || product.id;
   const wishlisted = isInWishlist(idValue);
   const collection = product.collection ? collections.find(c => c.slug === product.collection) : null;
-  const activeMaterials = detectActiveMaterials(product.material);
   const stones = detectStones(product.material);
 
   /* Gallery images — use extra product gallery entries if available, else editorial */
@@ -279,31 +239,6 @@ function QuickViewContent({
             </div>
           </div>
 
-          {/* ══════════════════════════════════
-              SECTION 2 — Also Available In (material swatches)
-           ══════════════════════════════════ */}
-          <div className="px-7 pb-7 border-b border-[var(--border)]">
-            <p className="text-[9px] uppercase tracking-[0.28em] text-[var(--muted-foreground)] mb-4">
-              Also Available In
-            </p>
-            <div className="flex flex-wrap gap-5">
-              {ALL_SWATCHES.map(swatch => {
-              const isActive = activeMaterials.includes(swatch.label);
-              return <div key={swatch.label} className="flex flex-col items-center gap-1.5">
-                    <div className={`w-9 h-9 rounded-full transition-all duration-200 cursor-pointer ${isActive ? 'ring-2 ring-offset-2 ring-[var(--foreground)] scale-110' : 'opacity-45 hover:opacity-70 hover:scale-105'}`} style={{
-                  backgroundColor: swatch.color,
-                  border: swatch.border ? '1.5px solid #bbb' : 'none'
-                }} title={swatch.label} />
-                    <span className={`text-[9px] uppercase tracking-[0.1em] whitespace-nowrap ${isActive ? 'text-[var(--foreground)]' : 'text-[var(--muted-foreground)]'}`}>
-                      {swatch.short}
-                    </span>
-                  </div>;
-            })}
-            </div>
-            <p className="mt-4 text-[10px] text-[var(--muted-foreground)] font-light italic leading-relaxed">
-              Contact your advisor to commission this piece in your preferred material.
-            </p>
-          </div>
 
           {/* ══════════════════════════════════
               SECTION 3 — Editorial Gallery (3 images)
