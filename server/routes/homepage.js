@@ -73,6 +73,32 @@ router.post('/metadata/add', async (req, res) => {
   }
 });
 
+router.put('/metadata/:type/:id', async (req, res) => {
+  const { type, id } = req.params;
+  const { name, slug, image, description, hover_image } = req.body;
+
+  try {
+    if (type === 'category') {
+      await db.query(
+        'UPDATE categories SET name = ?, slug = ?, image = ? WHERE id = ?',
+        [name, slug, image || null, id]
+      );
+    } else if (type === 'collection') {
+      await db.query(
+        'UPDATE collections SET name = ?, slug = ?, description = ?, image = ?, hover_image = ? WHERE id = ?',
+        [name, slug, description || null, image || null, hover_image || null, id]
+      );
+    } else {
+      return res.status(400).json({ message: 'Invalid metadata type' });
+    }
+
+    res.json({ message: `${type} updated successfully` });
+  } catch (error) {
+    console.error(`UPDATE ${type} ERROR:`, error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // DELETE METADATA
 router.delete('/metadata/:type/:id', async (req, res) => {
   const { type, id } = req.params;

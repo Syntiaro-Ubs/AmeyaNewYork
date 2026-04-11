@@ -1,28 +1,45 @@
 import { motion } from 'motion/react';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router';
-import videoFile from '../../../assets/collection/ELEVE/5/PRV2.mp4';
+import { getImageUrl } from '../../utils/image';
 
-export function NewArrivalHero() {
+export function NewArrivalHero({ data }) {
+  if (data && data.is_visible === 0) return null;
+
+  const title = data?.title || "Experience Luxury Like Never Before";
+  const subtitle = data?.subtitle || "Discover our latest collection crafted with precision and elegance.";
+  const media = data?.media_url || '';
+  const link = data?.link_url || "/category/new-arrival";
+
   return (
     <section className="relative w-full h-[70vh] md:h-screen min-h-[560px] flex items-center justify-center overflow-hidden bg-black">
-      {/* Video Background */}
+      {/* Video/Image Background */}
       <div className="absolute inset-0 z-0">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="w-full h-full object-cover"
-          style={{
-            WebkitUserSelect: 'none',
-            userSelect: 'none',
-          }}
-          loading="lazy"
-        >
-          <source src={videoFile} type="video/mp4" />
-          Your browser does not support the video tag.
-        </video>
+        {media && (
+          media.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-full object-cover"
+              style={{
+                WebkitUserSelect: 'none',
+                userSelect: 'none',
+              }}
+              loading="lazy"
+            >
+              <source src={getImageUrl(media)} type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          ) : (
+            <img 
+              src={getImageUrl(media)} 
+              alt="New Arrival" 
+              className="w-full h-full object-cover"
+            />
+          )
+        )}
 
         {/* Dark Overlay */}
         <div className="absolute inset-0 bg-black/50" />
@@ -69,8 +86,7 @@ export function NewArrivalHero() {
             }}
             className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-serif font-bold leading-tight mb-4 md:mb-6 text-white"
           >
-            Experience Luxury <br className="hidden sm:block" />
-            Like Never Before
+            {title}
           </motion.h1>
 
           {/* Subheading - Fade in third */}
@@ -90,8 +106,7 @@ export function NewArrivalHero() {
             }}
             className="text-base md:text-lg text-white/80 font-sans font-light max-w-2xl mb-8 md:mb-12 leading-relaxed"
           >
-            Discover our latest collection crafted with precision and elegance. 
-            Each piece tells a story of timeless luxury and contemporary design.
+            {subtitle}
           </motion.p>
 
           {/* CTA Button - Fade in last */}
@@ -111,7 +126,7 @@ export function NewArrivalHero() {
             }}
           >
             <Link
-              to="/category/new-arrival"
+              to={link}
               className="group inline-flex items-center gap-3 px-8 md:px-10 py-3 md:py-4 bg-white text-black font-sans font-semibold text-sm md:text-base uppercase tracking-[0.1em] hover:bg-white/90 transition-all duration-300 ease-out hover:gap-4"
             >
               Explore Now

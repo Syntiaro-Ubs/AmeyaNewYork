@@ -8,7 +8,7 @@ async function seed() {
       title: 'Jewelry That Tells Your Story',
       subtitle: 'Jewelry That Tells Your Story',
       description: '',
-      media_url: '/src/assets/collection/ELEVE/2/RRM.JPG',
+      media_url: '',
       link_url: '/category/new-arrivals',
       is_visible: true
     },
@@ -61,14 +61,7 @@ async function seed() {
       title: '@AmeyaNewYork',
       subtitle: 'Follow us for daily inspiration',
       description: '',
-      content_json: JSON.stringify([
-        '/src/assets/collection/ELEVE/2/RGM.JPG',
-        '/src/assets/collection/Love and Engagement/D1M.JPG',
-        '/src/assets/collection/ELEVE/2/RGM.JPG',
-        '/src/assets/collection/ELEVE/4/PRG11.JPG',
-        '/src/assets/collection/ELEVE/2/RG11.JPG',
-        '/src/assets/collection/ELEVE/5/BRACELET/BD11.JPG'
-      ]),
+      content_json: JSON.stringify([]),
       is_visible: true
     }
   ];

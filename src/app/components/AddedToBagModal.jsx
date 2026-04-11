@@ -4,7 +4,6 @@ import { Link, useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ShoppingBag, ArrowRight, Check } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import { products } from '../data';
 export function AddedToBagModal() {
   const {
     isAddedModalOpen,
@@ -24,7 +23,7 @@ export function AddedToBagModal() {
           setLiveProducts(data);
         } catch (err) {
           console.error('Error fetching modal products:', err);
-          setLiveProducts(products); // fallback
+          setLiveProducts([]);
         }
       };
       fetchAllProducts();

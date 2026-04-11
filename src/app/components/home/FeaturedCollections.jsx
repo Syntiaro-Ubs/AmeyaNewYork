@@ -1,29 +1,40 @@
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
-import { collections } from '../../data';
 import { ArrowRight } from 'lucide-react';
+import { useSiteData } from '../../context/SiteDataContext';
+import { formatSlugLabel } from '../../utils/taxonomy';
 import { MediaRenderer } from '../ui/MediaRenderer';
 import { safeJsonParse } from '../../utils/json';
 
 export function FeaturedCollections({ data }) {
+  const {
+    collections
+  } = useSiteData();
+
   if (data && data.is_visible === 0) return null;
 
   const sectionTitle = data?.title || "Exclusive Collection";
   const defaultCollections = ['eleve', 'eclat-initial', 'love-engagement'];
   const rawFeaturedItems = safeJsonParse(data?.content_json, defaultCollections);
 
-  // Normalize the items and merge with static collection data
+  // Normalize the items and merge with backend collection data
   const featuredCollections = rawFeaturedItems.map(item => {
     const slug = typeof item === 'string' ? item : item.slug;
     const baseCollection = collections.find(c => c.slug === slug);
-    
-    if (!baseCollection) return null;
+    const collectionData = baseCollection || {
+      id: `collection-${slug}`,
+      slug,
+      name: formatSlugLabel(slug),
+      description: '',
+      image: '',
+      hoverImage: ''
+    };
 
-    // Merge with overrides
     return {
-      ...baseCollection,
-      image: (typeof item !== 'string' && item.image) ? item.image : baseCollection.image,
-      description: (typeof item !== 'string' && item.description) ? item.description : baseCollection.description
+      ...collectionData,
+      image: typeof item !== 'string' && item.image ? item.image : collectionData.image,
+      description:
+        typeof item !== 'string' && item.description ? item.description : collectionData.description
     };
   }).filter(Boolean);
 

@@ -2,60 +2,63 @@ import { useState, useEffect, useMemo } from 'react';
 import { getImageUrl } from '../utils/image';
 import { useParams, Link } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { products, categories, collections } from '../data';
 import { Heart, X, ChevronDown, SlidersHorizontal, ArrowRight } from 'lucide-react';
 import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
 import { useQuickView } from '../context/QuickViewContext';
-import heroVideo from '../../assets/collection/ELEVE/5/PRV2.mp4';
-import apexSparkVideo from '../../assets/collection/Apex Spark/ALL VIDEOS/Landscape_Videos/AMP110015_VL.mp4';
+import { useSiteData } from '../context/SiteDataContext';
 
 const POSITIONS = ['center', 'right', 'left'];
 const HERO_MEDIA_DISABLED_SLUGS = new Set(['rings', 'earrings', 'necklaces', 'bracelets']);
-const FALLBACK_IMAGE = collections[0]?.image || categories[0]?.image;
-const getCategoryImage = slug => categories.find(c => c.slug === slug)?.image || FALLBACK_IMAGE;
-const getCollectionImage = slug => collections.find(c => c.slug === slug)?.image || FALLBACK_IMAGE;
-const getCollectionHoverImage = slug => collections.find(c => c.slug === slug)?.hoverImage || FALLBACK_IMAGE;
+const getCategoryImage = (categories, slug, fallbackImage = '') =>
+  categories.find(category => category.slug === slug)?.image || fallbackImage;
+
+const getCollectionImage = (collections, slug, fallbackImage = '') =>
+  collections.find(collection => collection.slug === slug)?.image || fallbackImage;
+
+const getCollectionHoverImage = (collections, slug, fallbackImage = '') =>
+  collections.find(collection => collection.slug === slug)?.hoverImage ||
+  getCollectionImage(collections, slug, fallbackImage);
 
 const EDITORIAL_API_URL = 'http://localhost:5000/api/editorial';
 const BANNERS_API_URL = 'http://localhost:5000/api/banners';
 
 
 /* ── Per-slug hero banner images ── */
-const BANNER_IMAGES = {
+const getBannerConfig = (slug, categories, collections, fallbackImage) => ({
   rings: {
-    image: getCategoryImage('rings'),
+    image: getCategoryImage(categories, 'rings', fallbackImage),
     focalPoint: 'center 40%'
   },
   earrings: {
-    image: getCategoryImage('earrings'),
+    image: getCategoryImage(categories, 'earrings', fallbackImage),
     focalPoint: 'center 30%'
   },
   necklaces: {
-    image: getCategoryImage('necklaces'),
+    image: getCategoryImage(categories, 'necklaces', fallbackImage),
     focalPoint: 'center 25%'
   },
   bracelets: {
-    image: getCategoryImage('bracelets'),
+    image: getCategoryImage(categories, 'bracelets', fallbackImage),
     focalPoint: 'center 35%'
   },
   sets: {
-    image: getCategoryImage('sets'),
+    image: getCategoryImage(categories, 'sets', fallbackImage),
     focalPoint: 'center'
   },
   'new-arrivals': {
-    image: getCollectionImage('eleve'),
+    image: getCollectionImage(collections, 'eleve', fallbackImage),
     focalPoint: 'center'
   },
   bestsellers: {
-    image: getCollectionImage('eleve'),
+    image: getCollectionImage(collections, 'eleve', fallbackImage),
     focalPoint: 'center 30%'
   },
   'love-engagement': {
-    image: getCollectionImage('love-engagement'),
+    image: getCollectionImage(collections, 'love-engagement', fallbackImage),
     focalPoint: 'center'
   }
-};
+}[slug]);
 
 /* ══════════════════════════════════════════
    PRODUCT CARD
@@ -69,6 +72,9 @@ function ProductCard({
   toggleWishlist,
   isInWishlist
 }) {
+  const {
+    collections
+  } = useSiteData();
   const {
     openQuickView
   } = useQuickView();
@@ -261,6 +267,11 @@ export function Category() {
   const {
     slug
   } = useParams();
+  const {
+    categories,
+    collections,
+    loading: siteDataLoading
+  } = useSiteData();
   /* ── Call context hooks here (top-level) so they are always inside CartProvider/WishlistProvider ── */
   const {
     addToCart
@@ -319,8 +330,7 @@ export function Category() {
       setLiveProducts(data);
     } catch (error) {
       console.error('Failed to fetch products', error);
-      // Fallback to static data if API fails
-      setLiveProducts(products);
+      setLiveProducts([]);
     }
   };
 
@@ -395,7 +405,9 @@ export function Category() {
   }
 
   /* ── Resolve hero banner image ── */
-  const bannerCfg = slug ? BANNER_IMAGES[slug] : undefined;
+  const FALLBACK_IMAGE = collections[0]?.image || categories[0]?.image || '';
+  const BANNER_IMAGES = getBannerConfig(slug, categories, collections, FALLBACK_IMAGE);
+  const bannerCfg = BANNER_IMAGES;
   // For collection slugs, prefer the Unsplash banner if configured,
   // else fall back to the imported collection image from data.js
   const heroBannerImage = bannerCfg?.image ?? pageCollectionImage ?? null;
@@ -579,58 +591,24 @@ export function Category() {
                   muted
                   playsInline
                   className="absolute inset-0 w-full h-full object-cover"
-                  style={{ objectPosition: dynamicBanner.focal_point }}
+                  style={{ objectPosition: dynamicBanner.focal_point || 'center' }}
                   onLoadedData={() => setBannerLoaded(true)}
-                  src={`http://localhost:5000${dynamicBanner.media_url}`}
+                  src={getImageUrl(dynamicBanner.media_url)}
                 />
                 <div className="absolute inset-0 bg-black/40 transition-opacity duration-700" style={{ opacity: bannerLoaded ? 1 : 0 }} />
               </>
             ) : (
               <img
-                src={`http://localhost:5000${dynamicBanner.media_url}`}
+                src={getImageUrl(dynamicBanner.media_url)}
                 className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${bannerLoaded ? 'opacity-100' : 'opacity-0'}`}
-                style={{ objectPosition: dynamicBanner.focal_point }}
+                style={{ objectPosition: dynamicBanner.focal_point || 'center' }}
                 onLoad={() => setBannerLoaded(true)}
                 alt="Banner"
               />
             )
-          ) : HERO_MEDIA_DISABLED_SLUGS.has(slug) ? (
-            <div className="absolute inset-0 bg-gradient-to-br from-[#0e0e0e] via-[#1c1c1c] to-[#0e0e0e]" />
-          ) : (slug === 'new-arrivals' || slug === 'apex-spark') ? (
-            <>
-              <video
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="absolute inset-0 w-full h-full object-cover"
-                onLoadedData={() => setBannerLoaded(true)}
-              >
-                <source src={slug === 'apex-spark' ? apexSparkVideo : heroVideo} type="video/mp4" />
-              </video>
-              {/* Skeleton while loading */}
-              {!bannerLoaded && <div className="absolute inset-0 bg-[#1a1a1a] animate-pulse" />}
-            </>
           ) : (
-            /* Background image for other categories */
-            heroBannerImage ? (
-              <>
-                <img 
-                  src={heroBannerImage} 
-                  alt={title} 
-                  onLoad={() => setBannerLoaded(true)} 
-                  className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${bannerLoaded ? 'opacity-100' : 'opacity-0'}`} 
-                  style={{
-                    objectPosition: heroBannerFocal
-                  }}
-                />
-                {/* Skeleton while loading */}
-                {!bannerLoaded && <div className="absolute inset-0 bg-[#1a1a1a] animate-pulse" />}
-              </>
-            ) : (
-              /* Fallback: elegant dark gradient */
-              <div className="absolute inset-0 bg-gradient-to-br from-[#0e0e0e] via-[#1c1c1c] to-[#0e0e0e]" />
-            )
+            /* No banner uploaded - show elegant dark gradient */
+            <div className="absolute inset-0 bg-gradient-to-br from-[#0e0e0e] via-[#1c1c1c] to-[#0e0e0e]" />
           )}
         </div>
 

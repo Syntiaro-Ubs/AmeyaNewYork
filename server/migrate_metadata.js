@@ -26,6 +26,7 @@ async function migrate() {
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         slug VARCHAR(100) UNIQUE NOT NULL,
+        image VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -37,9 +38,33 @@ async function migrate() {
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         slug VARCHAR(100) UNIQUE NOT NULL,
+        description TEXT,
+        image VARCHAR(255),
+        hover_image VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // 2b. Add missing metadata columns for existing databases
+    const columns = [
+      { name: 'categories.image', sql: 'ALTER TABLE categories ADD COLUMN image VARCHAR(255)' },
+      { name: 'collections.description', sql: 'ALTER TABLE collections ADD COLUMN description TEXT' },
+      { name: 'collections.image', sql: 'ALTER TABLE collections ADD COLUMN image VARCHAR(255)' },
+      { name: 'collections.hover_image', sql: 'ALTER TABLE collections ADD COLUMN hover_image VARCHAR(255)' }
+    ];
+
+    for (const column of columns) {
+      try {
+        await db.query(column.sql);
+        console.log(`Added column: ${column.name}`);
+      } catch (error) {
+        if (error.code === 'ER_DUP_COLUMN_NAME') {
+          console.log(`Column already exists: ${column.name}`);
+        } else {
+          throw error;
+        }
+      }
+    }
 
     // 3. Prepopulate categories
     console.log('Prepopulating categories...');

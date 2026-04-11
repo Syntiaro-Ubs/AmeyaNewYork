@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Trash2, Plus, Minus, ArrowRight, ShieldCheck, Lock } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import 'sonner';
-import { products } from '../data';
 import { useCart } from '../context/CartContext';
 export function Cart() {
   const {
@@ -25,7 +24,7 @@ export function Cart() {
         setLiveProducts(data);
       } catch (err) {
         console.error('Error fetching cart products:', err);
-        setLiveProducts(products); // fallback
+        setLiveProducts([]);
       } finally {
         setLoading(false);
       }

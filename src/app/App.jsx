@@ -5,15 +5,18 @@ import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { QuickViewProvider } from './context/QuickViewContext';
 import { OrderProvider } from './context/OrderContext';
+import { SiteDataProvider } from './context/SiteDataContext';
 export default function App() {
   return <AuthProvider>
       <CartProvider>
         <WishlistProvider>
-          <QuickViewProvider>
-            <OrderProvider>
-              <RouterProvider router={router} />
-            </OrderProvider>
-          </QuickViewProvider>
+          <SiteDataProvider>
+            <QuickViewProvider>
+              <OrderProvider>
+                <RouterProvider router={router} />
+              </OrderProvider>
+            </QuickViewProvider>
+          </SiteDataProvider>
         </WishlistProvider>
       </CartProvider>
     </AuthProvider>;

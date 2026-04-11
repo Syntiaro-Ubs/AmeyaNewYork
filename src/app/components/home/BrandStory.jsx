@@ -1,11 +1,16 @@
 import { motion } from 'motion/react';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router';
-import { collections } from '../../data';
+import { useSiteData } from '../../context/SiteDataContext';
+import { formatSlugLabel } from '../../utils/taxonomy';
 import { MediaRenderer } from '../ui/MediaRenderer';
 import { safeJsonParse } from '../../utils/json';
 
 export function BrandStory({ data }) {
+  const {
+    collections
+  } = useSiteData();
+
   if (data && data.is_visible === 0) return null;
 
   const sectionTitle = data?.title || "Our Signature Collections";
@@ -16,11 +21,18 @@ export function BrandStory({ data }) {
   const signatureCollections = signatureItems.map(item => {
     const slug = typeof item === 'string' ? item : item.slug;
     const baseCol = collections.find(c => c.slug === slug);
-    if (!baseCol) return null;
+    const collectionData = baseCol || {
+      id: `collection-${slug}`,
+      slug,
+      name: formatSlugLabel(slug),
+      description: '',
+      image: ''
+    };
     return {
-      ...baseCol,
-      image: (typeof item !== 'string' && item.image) ? item.image : baseCol.image,
-      description: (typeof item !== 'string' && item.description) ? item.description : baseCol.description
+      ...collectionData,
+      image: typeof item !== 'string' && item.image ? item.image : collectionData.image,
+      description:
+        typeof item !== 'string' && item.description ? item.description : collectionData.description
     };
   }).filter(Boolean);
 

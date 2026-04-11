@@ -2,13 +2,17 @@ import { useRef, useState, useEffect } from "react";
 import { Link } from "react-router";
 import { motion } from "motion/react";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
-import { categories as staticCategories } from "../../data";
+import { useSiteData } from "../../context/SiteDataContext";
+import { formatSlugLabel } from "../../utils/taxonomy";
 import { MediaRenderer } from "../ui/MediaRenderer";
 import { safeJsonParse } from "../../utils/json";
 
 export function CategoryGrid({ data }) {
   const scrollContainerRef = useRef(null);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const {
+    categories: siteCategories
+  } = useSiteData();
 
   if (data && data.is_visible === 0) return null;
 
@@ -19,17 +23,16 @@ export function CategoryGrid({ data }) {
   const defaultSlugs = ['rings', 'earrings', 'necklaces', 'bracelets'];
   const rawFeaturedItems = safeJsonParse(data?.content_json, defaultSlugs);
 
-  // Normalize items and merge with static data
+  // Normalize items and merge with backend data
   const featuredCategories = rawFeaturedItems.map(item => {
     const slug = typeof item === 'string' ? item : item.slug;
-    const baseCategory = staticCategories.find(c => c.slug === slug);
+    const baseCategory = siteCategories.find(c => c.slug === slug);
     
-    // Create a dynamic category object if not in static data
     const dynamicCategory = baseCategory ? { ...baseCategory } : {
       id: `dynamic-${slug}`,
       slug: slug,
-      name: slug.replace(/-/g, ' '),
-      image: '/src/assets/placeholder.jpg' // Fallback placeholder
+      name: formatSlugLabel(slug),
+      image: ''
     };
 
     return {

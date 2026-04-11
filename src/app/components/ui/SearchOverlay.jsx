@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Search, X, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router';
-import { products, categories } from '../../data';
+import { useSiteData } from '../../context/SiteDataContext';
 import { getImageUrl } from '../../utils/image';
 
 export function SearchOverlay({
@@ -11,6 +11,9 @@ export function SearchOverlay({
 }) {
   const [query, setQuery] = useState('');
   const [liveProducts, setLiveProducts] = useState([]);
+  const {
+    categories
+  } = useSiteData();
 
   useEffect(() => {
     if (isOpen) {
@@ -21,7 +24,7 @@ export function SearchOverlay({
           setLiveProducts(data);
         } catch (err) {
           console.error('Error fetching search products:', err);
-          setLiveProducts(products); // fallback
+          setLiveProducts([]);
         }
       };
       fetchAllProducts();
@@ -75,7 +78,9 @@ export function SearchOverlay({
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {categories.map(cat => <Link key={cat.id} to={`/category/${cat.slug}`} onClick={onClose} className="group flex flex-col items-center gap-3 p-4 rounded-lg hover:bg-[var(--muted)]/50 transition-colors">
                       <div className="w-16 h-16 rounded-full overflow-hidden bg-[var(--muted)]">
-                        <img src={cat.image} alt={cat.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                        {cat.image ? <img src={getImageUrl(cat.image)} alt={cat.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" /> : <div className="w-full h-full flex items-center justify-center text-sm font-medium text-[var(--muted-foreground)]">
+                            {cat.name?.charAt(0) || '?'}
+                          </div>}
                       </div>
                       <span className="font-medium font-serif">{cat.name}</span>
                     </Link>)}

@@ -1,7 +1,8 @@
 import { Link } from 'react-router';
 import { motion, useScroll, useSpring } from 'motion/react';
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
-import { collections } from '../../data';
+import { useSiteData } from '../../context/SiteDataContext';
+import { formatSlugLabel } from '../../utils/taxonomy';
 import { MediaRenderer } from '../ui/MediaRenderer';
 import { safeJsonParse } from '../../utils/json';
 import { useRef, useState, useEffect } from 'react';
@@ -9,6 +10,9 @@ import { useRef, useState, useEffect } from 'react';
 export function CollectionCards({ data }) {
   const scrollRef = useRef(null);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const {
+    collections
+  } = useSiteData();
 
   if (data && data.is_visible === 0) return null;
 
@@ -21,12 +25,17 @@ export function CollectionCards({ data }) {
   const featuredCollections = rawFeaturedItems.map(item => {
     const slug = typeof item === 'string' ? item : item.slug;
     const baseCollection = collections.find(c => c.slug === slug);
-
-    if (!baseCollection) return null;
+    const collectionData = baseCollection || {
+      id: `collection-${slug}`,
+      slug,
+      name: formatSlugLabel(slug),
+      description: '',
+      image: ''
+    };
 
     return {
-      ...baseCollection,
-      image: (typeof item !== 'string' && item.image) ? item.image : baseCollection.image
+      ...collectionData,
+      image: typeof item !== 'string' && item.image ? item.image : collectionData.image
     };
   }).filter(Boolean);
 

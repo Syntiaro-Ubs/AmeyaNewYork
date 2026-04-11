@@ -1,6 +1,5 @@
 import { Instagram } from 'lucide-react';
 import { motion } from 'motion/react';
-import { instagramFeed } from '../../data';
 import { MediaRenderer } from '../ui/MediaRenderer';
 import { safeJsonParse } from '../../utils/json';
 
@@ -9,7 +8,7 @@ export function InstagramFeed({ data }) {
 
   const sectionTitle = data?.title || "@AmeyaNewYork";
   const sectionSubtitle = data?.subtitle || "Follow us for daily inspiration";
-  const defaultItems = instagramFeed.map(p => ({ image: p.image, link: 'https://instagram.com/ameyanewyork' }));
+  const defaultItems = [];
   const feedItems = safeJsonParse(data?.content_json, defaultItems).map(item => {
     if (typeof item === 'string') return { image: item, link: 'https://instagram.com/ameyanewyork' };
     return {
@@ -17,6 +16,8 @@ export function InstagramFeed({ data }) {
       link: item.link || 'https://instagram.com/ameyanewyork'
     };
   });
+
+  if (feedItems.length === 0) return null;
 
   return (
     <section className="py-24 bg-[var(--background)]">

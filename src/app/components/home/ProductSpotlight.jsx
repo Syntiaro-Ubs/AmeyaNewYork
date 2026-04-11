@@ -1,10 +1,15 @@
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
-import { collections } from '../../data';
+import { useSiteData } from '../../context/SiteDataContext';
+import { formatSlugLabel } from '../../utils/taxonomy';
 import { MediaRenderer } from '../ui/MediaRenderer';
 import { safeJsonParse } from '../../utils/json';
 
 export function ProductSpotlight({ data }) {
+  const {
+    collections
+  } = useSiteData();
+
   if (data && data.is_visible === 0) return null;
 
   const sectionTitle = data?.title || "The SpotLight";
@@ -14,10 +19,16 @@ export function ProductSpotlight({ data }) {
   const spotlightCollections = spotlightItems.map(item => {
     const slug = typeof item === 'string' ? item : item.slug;
     const baseCol = collections.find(c => c.slug === slug);
-    if (!baseCol) return null;
+    const collectionData = baseCol || {
+      id: `collection-${slug}`,
+      slug,
+      name: formatSlugLabel(slug),
+      description: '',
+      image: ''
+    };
     return {
-      ...baseCol,
-      image: (typeof item !== 'string' && item.image) ? item.image : baseCol.image
+      ...collectionData,
+      image: typeof item !== 'string' && item.image ? item.image : collectionData.image
     };
   }).filter(Boolean);
 

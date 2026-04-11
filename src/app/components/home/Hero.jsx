@@ -2,13 +2,14 @@ import { motion } from 'motion/react';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router';
 import { MediaRenderer } from '../ui/MediaRenderer';
-import defaultHeroImage from '../../../assets/collection/ELEVE/2/RRM.JPG';
 
-export function Hero() {
-  const title = "Jewelry That Tells Your Story";
-  const subtitle = "Jewelry That Tells Your Story";
-  const media = defaultHeroImage;
-  const link = "/category/new-arrivals";
+export function Hero({ data }) {
+  if (data && data.is_visible === 0) return null;
+
+  const title = data?.title || "Jewelry That Tells Your Story";
+  const subtitle = data?.subtitle || "Jewelry That Tells Your Story";
+  const media = data?.media_url || '';
+  const link = data?.link_url || "/category/new-arrivals";
 
   return (
     <section className="relative h-[70vh] md:h-screen min-h-[560px] flex items-center justify-center overflow-hidden bg-[#050505]">

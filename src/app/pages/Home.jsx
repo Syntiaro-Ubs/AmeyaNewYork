@@ -15,6 +15,7 @@ export function Home() {
       try {
         const response = await fetch('http://localhost:5000/api/homepage');
         const data = await response.json();
+        console.log('Homepage API response:', data);
         setSections(data);
       } catch (error) {
         console.error('Failed to fetch homepage sections:', error);
@@ -23,11 +24,15 @@ export function Home() {
     fetchSections();
   }, []);
 
-  const getSection = (slug) => sections.find(s => s.section_slug === slug);
+  const getSection = (slug) => {
+    const section = sections.find(s => s.section_slug === slug);
+    console.log(`Getting section "${slug}":`, section);
+    return section;
+  };
 
   return (
     <>
-      <Hero />
+      <Hero data={getSection('hero')} />
       <FeaturedCollections data={getSection('featured-collections')} />
       <CollectionCards data={getSection('collection-cards')} />
       <CategoryGrid data={getSection('category-grid')} />

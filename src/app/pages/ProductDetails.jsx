@@ -3,8 +3,8 @@ import { getImageUrl } from '../utils/image';
 import { useParams, Link, useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ShoppingBag, Heart, MapPin, MessageSquare, ChevronDown } from 'lucide-react';
-import { products, collections } from '../data';
 import { useCart } from '../context/CartContext';
+import { useSiteData } from '../context/SiteDataContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useQuickView } from '../context/QuickViewContext';
 import '../components/ProductCard';
@@ -72,6 +72,9 @@ export function ProductDetails() {
     toggleWishlist,
     isInWishlist
   } = useWishlist();
+  const {
+    collections
+  } = useSiteData();
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -368,6 +371,9 @@ function RecommendationSections({
     toggleWishlist,
     isInWishlist
   } = useWishlist();
+  const {
+    collections
+  } = useSiteData();
   const [liveProducts, setLiveProducts] = useState([]);
 
   useEffect(() => {

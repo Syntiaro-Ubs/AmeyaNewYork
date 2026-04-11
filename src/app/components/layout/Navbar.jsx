@@ -4,6 +4,7 @@ import { Search, ShoppingBag, User, Menu, MessageCircle, LogOut, Package } from 
 import { SearchOverlay } from '../ui/SearchOverlay';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { useSiteData } from '../../context/SiteDataContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from '../ui/sheet';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
@@ -12,8 +13,10 @@ export function Navbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const location = useLocation();
-  const [dynamicCategories, setDynamicCategories] = useState([]);
-  const [dynamicCollections, setDynamicCollections] = useState([]);
+  const {
+    categories: dynamicCategories,
+    collections: dynamicCollections
+  } = useSiteData();
   const {
     user,
     logout
@@ -33,23 +36,6 @@ export function Navbar() {
   useEffect(() => {
     setIsSheetOpen(false);
   }, [location]);
-
-  useEffect(() => {
-    const fetchTaxonomy = async () => {
-      try {
-        const [catRes, colRes] = await Promise.all([
-          fetch('http://localhost:5000/api/homepage/categories/all'),
-          fetch('http://localhost:5000/api/homepage/collections/all')
-        ]);
-        const [cats, cols] = await Promise.all([catRes.json(), colRes.json()]);
-        setDynamicCategories(cats);
-        setDynamicCollections(cols);
-      } catch (err) {
-        console.error('Navbar fetch error:', err);
-      }
-    };
-    fetchTaxonomy();
-  }, []);
   return <>
       <header className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${isScrolled ? 'bg-[var(--background)]/90 backdrop-blur-md shadow-sm py-3' : 'bg-transparent py-6'}`}>
         <div className="container mx-auto px-4 md:px-8 flex items-center justify-between">

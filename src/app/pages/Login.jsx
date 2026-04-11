@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router';
 import { ArrowRight, Mail, Lock, User, Check, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
-import loginImage from '../../assets/collection/Love and Engagement/D1M.JPG';
+import loginImage from '../../assets/collection/Love and Engagement/sets.jpeg';
+
 export function Login() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');

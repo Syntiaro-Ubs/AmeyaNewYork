@@ -3,15 +3,15 @@ import { getImageUrl } from '../utils/image';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ShoppingBag, Heart, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router';
-import { products, collections } from '../data';
+import { collections } from '../data';
 import { useQuickView } from '../context/QuickViewContext';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 
 /* ── Editorial / lifestyle images for the gallery ── */
-const FALLBACK_IMAGE = products[0]?.image || collections[0]?.image;
-const GALLERY_MODEL = products[1]?.image || FALLBACK_IMAGE;
-const GALLERY_CLOSEUP = products[2]?.image || FALLBACK_IMAGE;
+const FALLBACK_IMAGE = collections[0]?.image || '';
+const GALLERY_MODEL = collections[1]?.image || FALLBACK_IMAGE;
+const GALLERY_CLOSEUP = collections[2]?.image || FALLBACK_IMAGE;
 const GALLERY_LIFESTYLE = collections[0]?.image || FALLBACK_IMAGE;
 
 /* ── Material swatch palette ── */

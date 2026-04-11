@@ -5,7 +5,6 @@ import { Link, useNavigate } from 'react-router';
 import { ChevronRight, Lock, ShieldCheck, Check, Package, CreditCard, Truck, ChevronLeft } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useOrders } from '../context/OrderContext';
-import { products } from '../data';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -48,7 +47,7 @@ export function Checkout() {
         setLiveProducts(data);
       } catch (err) {
         console.error('Error fetching checkout products:', err);
-        setLiveProducts(products); // fallback
+        setLiveProducts([]);
       } finally {
         setLoading(false);
       }
