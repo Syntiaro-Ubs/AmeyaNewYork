@@ -222,16 +222,27 @@ function QuickViewContent({
 
               {/* Action buttons */}
               <div className="flex flex-col gap-2 mt-auto">
-                <button onClick={() => {
-                  addToCart(product.id, 1);
-                  closeQuickView();
-                }} className="w-full py-[11px] bg-[var(--foreground)] text-white text-[10px] uppercase tracking-[0.24em] hover:opacity-80 transition-opacity flex items-center justify-center gap-2">
-                  <ShoppingBag size={12} strokeWidth={1.5} /> Add to Bag
-                </button>
-                <button onClick={() => toggleWishlist(idValue)} className={`w-full py-[11px] border text-[10px] uppercase tracking-[0.22em] transition-all flex items-center justify-center gap-2 ${wishlisted ? 'border-[var(--foreground)] text-[var(--foreground)] bg-[#f5f4f2]' : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]'}`}>
-                  <Heart size={12} strokeWidth={1.5} fill={wishlisted ? 'currentColor' : 'none'} />
-                  {wishlisted ? 'Saved to Wishlist' : 'Save to Wishlist'}
-                </button>
+                {/* Main action buttons - side by side */}
+                <div className="flex gap-2">
+                  <button onClick={() => {
+                    addToCart(product.id, 1);
+                    closeQuickView();
+                    window.location.href = '/checkout';
+                  }} className="flex-1 py-[11px] bg-[var(--foreground)] text-white text-[10px] uppercase tracking-[0.24em] hover:opacity-80 transition-opacity flex items-center justify-center gap-1.5">
+                    <ShoppingBag size={12} strokeWidth={1.5} /> <span className="hidden sm:inline">Buy Now</span><span className="sm:hidden">Buy</span>
+                  </button>
+                  <button onClick={() => {
+                    addToCart(product.id, 1);
+                    closeQuickView();
+                    window.location.href = '/cart';
+                  }} className="flex-1 py-[11px] border border-[var(--foreground)] text-[var(--foreground)] text-[10px] uppercase tracking-[0.24em] hover:bg-[var(--foreground)] hover:text-white transition-all flex items-center justify-center gap-1.5">
+                    <ShoppingBag size={12} strokeWidth={1.5} /> <span className="hidden sm:inline">Add to Bag</span><span className="sm:hidden">Add</span>
+                  </button>
+                  <button onClick={() => toggleWishlist(idValue)} className={`flex-1 py-[11px] border text-[10px] uppercase tracking-[0.22em] transition-all flex items-center justify-center gap-1.5 ${wishlisted ? 'border-[var(--foreground)] text-[var(--foreground)] bg-[#f5f4f2]' : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]'}`}>
+                    <Heart size={12} strokeWidth={1.5} fill={wishlisted ? 'currentColor' : 'none'} />
+                    <span className="hidden sm:inline">{wishlisted ? 'Saved' : 'Wishlist'}</span>
+                  </button>
+                </div>
                 <Link to={`/product/${product.id}`} onClick={closeQuickView} className="flex items-center justify-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors pt-1">
                   View Full Details <ArrowRight size={10} strokeWidth={1.5} />
                 </Link>
