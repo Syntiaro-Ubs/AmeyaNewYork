@@ -24,7 +24,7 @@ export function Footer() {
           <div>
             <h3 className="font-serif text-lg mb-6 text-[var(--primary)]">Jewelry</h3>
             <ul className="space-y-3 text-sm text-[var(--muted-foreground)]">
-              <li><Link to="/new-arrival" className="hover:text-[var(--primary)] transition-colors">All Products</Link></li>
+              <li><Link to="/category/new-arrivals" className="hover:text-[var(--primary)] transition-colors">All Products</Link></li>
               <li><Link to="/category/rings" className="hover:text-[var(--primary)] transition-colors">Rings</Link></li>
               <li><Link to="/category/earrings" className="hover:text-[var(--primary)] transition-colors">Earrings</Link></li>
               <li><Link to="/category/necklaces" className="hover:text-[var(--primary)] transition-colors">Necklaces</Link></li>
