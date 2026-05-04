@@ -5,6 +5,7 @@ import { Trash2, Plus, Minus, ArrowRight, ShieldCheck, Lock } from 'lucide-react
 import { Link, useNavigate } from 'react-router';
 import 'sonner';
 import { useCart } from '../context/CartContext';
+import { getProductRouteId, resolveProductByIdentifier } from '../utils/product';
 export function Cart() {
   const {
     cartItems,
@@ -35,12 +36,12 @@ export function Cart() {
   // Derive full product details for cart items
   const cartProducts = useMemo(() => {
     return cartItems.map(item => {
-      const product = liveProducts.find(p => String(p.id) === String(item.productId) || String(p.product_id) === String(item.productId));
+      const product = resolveProductByIdentifier(liveProducts, item.productId);
       return {
         ...item,
         product
       };
-    }).filter(item => item.product !== undefined);
+    }).filter(item => item.product);
   }, [cartItems, liveProducts]);
 
   const subtotal = cartProducts.reduce((sum, item) => {
@@ -124,7 +125,7 @@ export function Cart() {
                       <div>
                         <div className="flex justify-between items-start mb-2">
                           <h3 className="font-serif text-xl text-[var(--foreground)] pr-8">
-                            <Link to={`/product/${item.product.product_id || item.product.id}`} className="hover:text-[var(--primary)] transition-colors">
+                            <Link to={`/product/${getProductRouteId(item.product)}`} className="hover:text-[var(--primary)] transition-colors">
                               {item.product.name}
                             </Link>
                           </h3>
