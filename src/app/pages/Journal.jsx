@@ -1,14 +1,52 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router';
 import { Calendar, ArrowRight, Tag } from 'lucide-react';
-import { useState } from 'react';
+import { MediaRenderer } from '../components/ui/MediaRenderer';
 
 export function Journal() {
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [dynamicBanner, setDynamicBanner] = useState(null);
+  const [dynamicArticles, setDynamicArticles] = useState([]);
 
-  const categories = ['all', 'Style Guide', 'Behind the Scenes', 'Craftsmanship', 'Events', 'Trends'];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [bannerRes, articlesRes] = await Promise.all([
+          fetch('http://localhost:5000/api/banners/journal'),
+          fetch('http://localhost:5000/api/journal')
+        ]);
+        
+        if (bannerRes.ok) {
+          const bannerData = await bannerRes.json();
+          setDynamicBanner(bannerData);
+        }
+        
+        if (articlesRes.ok) {
+          const articlesData = await articlesRes.json();
+          if (articlesData && articlesData.length > 0) {
+            const formatted = articlesData.map(a => ({
+              id: a.id,
+              title: a.title,
+              excerpt: a.excerpt,
+              image: a.image_url ? `http://localhost:5000${a.image_url}` : '',
+              category: a.category,
+              date: new Date(a.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+              readTime: a.read_time || '5 min read',
+              is_featured: a.is_featured
+            }));
+            setDynamicArticles(formatted);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch journal data', error);
+      }
+    };
+    
+    fetchData();
+  }, []);
 
-  const articles = [
+  const hardcodedArticles = [
     {
       id: 1,
       title: 'The Art of Layering: Mastering the Multi-Necklace Look',
@@ -83,30 +121,47 @@ export function Journal() {
     }
   ];
 
+  const articles = dynamicArticles.length > 0 ? dynamicArticles : hardcodedArticles;
+  const categories = ['all', ...new Set(articles.map(a => a.category).filter(Boolean))];
+
   const filteredArticles = selectedCategory === 'all' 
     ? articles 
     : articles.filter(article => article.category === selectedCategory);
 
-  const featuredArticle = articles[0];
+  const featuredArticle = articles.find(a => a.is_featured) || articles[0];
+  const regularArticles = filteredArticles.filter(a => a.id !== featuredArticle?.id);
 
   return (
     <div className="min-h-screen bg-white">
       
       {/* Hero Section */}
-      <section className="bg-[#f8f7f5] py-20 md:py-28 px-6 md:px-12">
-        <div className="max-w-6xl mx-auto text-center">
+      <section className="relative h-[60vh] md:h-[70vh] bg-[#f8f7f5] overflow-hidden flex items-center justify-center">
+        {dynamicBanner && (
+          <>
+            <div className="absolute inset-0 z-0">
+              <MediaRenderer 
+                src={dynamicBanner.media_url} 
+                alt="AMEYA Journal"
+                className="w-full h-full object-cover"
+                style={{ objectPosition: dynamicBanner.focal_point || 'center' }}
+              />
+            </div>
+            <div className="absolute inset-0 bg-black/40 z-10" />
+          </>
+        )}
+        <div className="relative z-20 max-w-6xl mx-auto text-center px-6 md:px-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <p className="text-[10px] uppercase tracking-[0.4em] text-[var(--primary)] mb-4">
+            <p className={`text-[10px] uppercase tracking-[0.4em] mb-4 ${dynamicBanner ? 'text-white/90' : 'text-[var(--primary)]'}`}>
               Stories & Inspiration
             </p>
-            <h1 className="font-serif text-5xl md:text-7xl text-[var(--foreground)] mb-6 leading-tight">
+            <h1 className={`font-serif text-5xl md:text-7xl mb-6 leading-tight ${dynamicBanner ? 'text-white' : 'text-[var(--foreground)]'}`}>
               The AMEYA Journal
             </h1>
-            <p className="text-[var(--muted-foreground)] text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
+            <p className={`text-lg md:text-xl max-w-2xl mx-auto leading-relaxed ${dynamicBanner ? 'text-white/90' : 'text-[var(--muted-foreground)]'}`}>
               Explore the world of fine jewelry through our curated stories, style guides, and behind-the-scenes insights.
             </p>
           </motion.div>
@@ -200,7 +255,7 @@ export function Journal() {
       <section className="py-20 md:py-28 px-6 md:px-12">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
-            {filteredArticles.slice(1).map((article, index) => (
+            {regularArticles.map((article, index) => (
               <motion.article
                 key={article.id}
                 initial={{ opacity: 0, y: 20 }}

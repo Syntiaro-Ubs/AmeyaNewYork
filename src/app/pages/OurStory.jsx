@@ -1,19 +1,47 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router';
 import { Sparkles, Heart, Award, Users, ArrowRight } from 'lucide-react';
+import { MediaRenderer } from '../components/ui/MediaRenderer';
 
 export function OurStory() {
+  const [dynamicBanner, setDynamicBanner] = useState(null);
+
+  useEffect(() => {
+    const fetchBanner = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/banners/our-story');
+        if (response.ok) {
+          const data = await response.json();
+          setDynamicBanner(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch dynamic banner:', error);
+      }
+    };
+    fetchBanner();
+  }, []);
+
   return (
     <div className="min-h-screen bg-white">
       
       {/* Hero Section */}
       <section className="relative h-[70vh] md:h-[80vh] overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-black/20 z-10" />
-        <img 
-          src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=1600&q=80" 
-          alt="AMEYA New York Atelier"
-          className="w-full h-full object-cover"
-        />
+        {dynamicBanner ? (
+          <MediaRenderer 
+            src={dynamicBanner.media_url} 
+            alt="AMEYA New York Atelier"
+            className="w-full h-full object-cover"
+            style={{ objectPosition: dynamicBanner.focal_point || 'center' }}
+          />
+        ) : (
+          <img 
+            src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=1600&q=80" 
+            alt="AMEYA New York Atelier"
+            className="w-full h-full object-cover"
+          />
+        )}
         <div className="absolute inset-0 z-20 flex items-center justify-center text-center px-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}

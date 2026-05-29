@@ -17,14 +17,14 @@ const storage = multer.diskStorage({
 const upload = multer({ 
   storage: storage,
   fileFilter: (req, file, cb) => {
-    const filetypes = /jpeg|jpg|png|gif|mp4|mov|avi|wmv/;
+    const filetypes = /jpeg|jpg|png|gif|webp|mp4|mov|avi|wmv/;
     const mimetype = filetypes.test(file.mimetype);
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
 
     if (mimetype && extname) {
       return cb(null, true);
     }
-    cb(new Error("Error: File upload only supports images and videos!"));
+    cb(new Error("Error: File upload only supports images and videos! Valid formats: JPG, PNG, GIF, WEBP, MP4, MOV, AVI, WMV."));
   }
 });
 
@@ -51,31 +51,36 @@ router.get('/:slug', async (req, res) => {
 });
 
 // POST to Add or Update a banner
-router.post('/', upload.single('media'), async (req, res) => {
-  try {
-    const { page_slug, media_type, focal_point } = req.body;
-    const media_url = req.file ? `/uploads/banners/${req.file.filename}` : req.body.media_url;
-
-    if (!media_url) {
-      return res.status(400).json({ message: 'Media (Image/Video) is required' });
+router.post('/', (req, res) => {
+  upload.single('media')(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({ message: err.message });
     }
+    try {
+      const { page_slug, media_type, focal_point } = req.body;
+      const media_url = req.file ? `/uploads/banners/${req.file.filename}` : req.body.media_url;
 
-    // Upsert logic (insert or update on duplicate key)
-    const [result] = await db.query(
-      `INSERT INTO banners (page_slug, media_url, media_type, focal_point) 
-       VALUES (?, ?, ?, ?) 
-       ON DUPLICATE KEY UPDATE 
-       media_url = VALUES(media_url), 
-       media_type = VALUES(media_type), 
-       focal_point = VALUES(focal_point)`,
-      [page_slug, media_url, media_type, focal_point || 'center 40%']
-    );
+      if (!media_url) {
+        return res.status(400).json({ message: 'Media (Image/Video) is required' });
+      }
 
-    res.status(200).json({ message: 'Banner saved successfully' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
-  }
+      // Upsert logic (insert or update on duplicate key)
+      const [result] = await db.query(
+        `INSERT INTO banners (page_slug, media_url, media_type, focal_point) 
+         VALUES (?, ?, ?, ?) 
+         ON DUPLICATE KEY UPDATE 
+         media_url = VALUES(media_url), 
+         media_type = VALUES(media_type), 
+         focal_point = VALUES(focal_point)`,
+        [page_slug, media_url, media_type, focal_point || 'center 40%']
+      );
+
+      res.status(200).json({ message: 'Banner saved successfully' });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  });
 });
 
 // DELETE a banner

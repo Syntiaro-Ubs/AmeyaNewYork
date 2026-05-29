@@ -9,14 +9,17 @@ import { TaxonomyManager } from './TaxonomyManager';
 import { UserManager } from './UserManager';
 import { OrderManagement } from './OrderManagement';
 
+import { JournalManager } from './JournalManager';
+
 export const Dashboard = () => {
   const navigate = useNavigate();
   const userData = JSON.parse(localStorage.getItem('admin_user') || '{}');
   let userPermissions = userData.permissions || [];
   
   // Proactively add 'orders' permission if it's the main admin
-  if (userData.role === 'admin' && !userPermissions.includes('orders')) {
-    userPermissions = [...userPermissions, 'orders'];
+  if (userData.role === 'admin') {
+    if (!userPermissions.includes('orders')) userPermissions.push('orders');
+    if (!userPermissions.includes('journal')) userPermissions.push('journal');
   }
 
   const allTabs = [
@@ -26,6 +29,7 @@ export const Dashboard = () => {
     { id: 'banners', label: 'Banners', permission: 'banners' },
     { id: 'homepage', label: 'Homepage', permission: 'homepage' },
     { id: 'taxonomy', label: 'Collections & Categories', permission: 'taxonomy' },
+    { id: 'journal', label: 'Journal', permission: 'journal' },
     { id: 'users', label: 'User Management', permission: 'users' }
   ];
 
@@ -50,7 +54,8 @@ export const Dashboard = () => {
                activeTab === 'editorial' ? 'Shop the Look Management' : 
                activeTab === 'banners' ? 'Global Banner Management' : 
                activeTab === 'homepage' ? 'Homepage Customization' : 
-                activeTab === 'taxonomy' ? 'Collections & Categories' : 'User Management'}
+               activeTab === 'taxonomy' ? 'Collections & Categories' : 
+               activeTab === 'journal' ? 'Journal Management' : 'User Management'}
             </h1>
             <p className="mt-1 text-sm text-neutral-500">
               {activeTab === 'products' ? 'Manage your jewelry inventory from here.' : 
@@ -59,6 +64,7 @@ export const Dashboard = () => {
                activeTab === 'banners' ? 'Manage hero images and videos for all pages.' :
                activeTab === 'homepage' ? 'Edit home page sections, titles, and media dynamically.' :
                activeTab === 'taxonomy' ? 'Define and manage your website taxonomy (Collections & Categories).' :
+               activeTab === 'journal' ? 'Manage your blog posts and journal entries.' :
                'Manage administrative access and team members for the dashboard.'}
             </p>
           </div>
@@ -97,6 +103,7 @@ export const Dashboard = () => {
             activeTab === 'banners' ? <Banner /> :
             activeTab === 'homepage' ? <HomepageEditor /> :
             activeTab === 'taxonomy' ? <TaxonomyManager /> :
+            activeTab === 'journal' ? <JournalManager /> :
             activeTab === 'users' ? <UserManager /> :
             <div className="py-20 text-center text-neutral-400">Select a section to manage.</div>
           ) : (

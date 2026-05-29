@@ -24,7 +24,8 @@ export function Hero({ data }) {
           <MediaRenderer 
             src={media} 
             alt="AMEYA New York" 
-            className="w-full h-full object-cover object-[right_60%_0%]" 
+            className="w-full h-full object-cover" 
+            style={{ objectPosition: data?.focal_point || 'right 60% top 0%' }}
           />
         </motion.div>
         {/* Gradient overlays */}

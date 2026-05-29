@@ -5,7 +5,6 @@ import { NewArrival } from "./pages/NewArrival";
 import { ProductDetails } from "./pages/ProductDetails";
 import { Category } from "./pages/Category";
 import { Login } from "./pages/Login";
-import { Account } from "./pages/Account";
 import { Orders } from "./pages/Orders";
 import { Contact } from "./pages/Contact";
 import { Cart } from "./pages/Cart";
@@ -13,7 +12,10 @@ import { Checkout } from "./pages/Checkout";
 import { OurStory } from "./pages/OurStory";
 import { Careers } from "./pages/Careers";
 import { Journal } from "./pages/Journal";
+import { JournalArticle } from "./pages/JournalArticle";
 import { PrivacyPolicy } from "./pages/PrivacyPolicy";
+
+
 import { TermsOfService } from "./pages/TermsOfService";
 import { Dashboard } from "./pages/Dashboard/Dashboard";
 import { DashboardLogin } from "./pages/Dashboard/DashboardLogin";
@@ -51,9 +53,6 @@ export const router = createBrowserRouter([{
     path: "login",
     Component: Login
   }, {
-    path: "account",
-    Component: Account
-  }, {
     path: "orders",
     Component: Orders
   }, {
@@ -74,6 +73,9 @@ export const router = createBrowserRouter([{
   }, {
     path: "journal",
     Component: Journal
+  }, {
+    path: "journal/:id",
+    Component: JournalArticle
   }, {
     path: "privacy",
     Component: PrivacyPolicy

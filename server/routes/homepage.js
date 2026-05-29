@@ -158,17 +158,22 @@ router.put('/:slug', async (req, res) => {
 });
 
 // UPLOAD image for homepage
-router.post('/upload', upload.single('image'), (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ message: 'No file uploaded' });
+router.post('/upload', (req, res) => {
+  upload.single('image')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ message: err.message });
     }
-    const media_url = `/uploads/${req.file.filename}`;
-    res.json({ media_url });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Upload failed' });
-  }
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+      const media_url = `/uploads/${req.file.filename}`;
+      res.json({ media_url });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Upload failed' });
+    }
+  });
 });
 
 module.exports = router;

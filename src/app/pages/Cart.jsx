@@ -48,8 +48,7 @@ export function Cart() {
     return sum + item.product.price * item.quantity;
   }, 0);
   const shipping = 0; // Free shipping for luxury items usually
-  const tax = subtotal * 0.08875; // NYC Sales Tax approx
-  const total = subtotal + tax + shipping;
+  const total = subtotal + shipping;
   const handleUpdateQuantity = (id, newQuantity) => {
     if (newQuantity < 1) return;
     setIsUpdating(id);
@@ -188,13 +187,6 @@ export function Cart() {
                 <div className="flex justify-between text-[var(--muted-foreground)]">
                   <span>Shipping</span>
                   <span className="text-[var(--primary)] font-medium">Free</span>
-                </div>
-                <div className="flex justify-between text-[var(--muted-foreground)]">
-                  <span>Estimated Tax</span>
-                  <span>${tax.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  })}</span>
                 </div>
               </div>
 

@@ -20,12 +20,16 @@ const authRoutes = require('./routes/auth');
 const editorialRoutes = require('./routes/editorial');
 const bannerRoutes = require('./routes/banners');
 const homepageRoutes = require('./routes/homepage');
+const journalRoutes = require('./routes/journal');
+const cartRoutes = require('./routes/cart');
 
 app.use('/api/products', productRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/editorial', editorialRoutes);
 app.use('/api/banners', bannerRoutes);
 app.use('/api/homepage', homepageRoutes);
+app.use('/api/journal', journalRoutes);
+app.use('/api/cart', cartRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

@@ -352,7 +352,7 @@ export function Checkout() {
               </div>
 
               {/* Order Summary */}
-              <OrderSummary cartProducts={cartProducts} subtotal={subtotal} tax={tax} total={total} />
+              <OrderSummary cartProducts={cartProducts} subtotal={subtotal} total={total} />
             </motion.div>}
 
           {/* ───────────────── STEP 2: PAYMENT ─────────────────── */}
@@ -511,7 +511,7 @@ export function Checkout() {
                 </div>
               </div>
 
-              <OrderSummary cartProducts={cartProducts} subtotal={subtotal} tax={tax} total={total} />
+              <OrderSummary cartProducts={cartProducts} subtotal={subtotal} total={total} />
             </motion.div>}
 
           {/* ───────────────── STEP 3: CONFIRMATION ─────────────────── */}

@@ -165,6 +165,9 @@ export const Banner = () => {
                 >
                   <option value="">Select Page</option>
                   <option value="home">Home Page</option>
+                  <option value="our-story">Our Story</option>
+                  <option value="careers">Careers</option>
+                  <option value="journal">Journal</option>
                   <option value="new-arrivals">New Arrivals</option>
                   <optgroup label="Categories">
                     {dynamicCategories.map(cat => <option key={cat.slug} value={cat.slug}>{cat.name}</option>)}

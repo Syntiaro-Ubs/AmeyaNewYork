@@ -66,8 +66,6 @@ export function Orders() {
       <div className="container mx-auto px-4 md:px-8 max-w-6xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
            <div className="flex items-center gap-2 text-sm text-gray-500 mb-2 md:mb-0">
-             <Link to="/account" className="hover:text-[var(--primary)]">My Account</Link>
-             <ChevronRight size={14} />
              <span className="text-gray-900 font-medium">My Orders</span>
            </div>
         </div>

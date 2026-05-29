@@ -1,29 +1,41 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { getProductIdentifiers, getProductKey } from '../utils/product';
+import { useAuth } from './AuthContext';
 
 const WishlistContext = createContext(undefined);
 
 export function WishlistProvider({ children }) {
+  const { user } = useAuth();
+
+  const getWishlistKey = () => {
+    return user && user.email ? `ameya_wishlist_${user.email}` : 'ameya_wishlist_guest';
+  };
+
   const persistWishlist = items => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('ameya_wishlist', JSON.stringify(items));
+      localStorage.setItem(getWishlistKey(), JSON.stringify(items));
     }
   };
 
   const [wishlistItems, setWishlistItems] = useState(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('ameya_wishlist');
-
+      const saved = localStorage.getItem('ameya_wishlist_guest');
       return saved ? [...new Set(JSON.parse(saved).map(item => String(item)))] : [];
     }
-
     return [];
   });
 
   useEffect(() => {
-    persistWishlist(wishlistItems);
-  }, [wishlistItems]);
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(getWishlistKey());
+      if (saved) {
+        setWishlistItems([...new Set(JSON.parse(saved).map(item => String(item)))]);
+      } else {
+        setWishlistItems([]);
+      }
+    }
+  }, [user]);
 
   const commitWishlistUpdate = updater => {
     setWishlistItems(prev => {
