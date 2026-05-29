@@ -10,6 +10,11 @@ import { Orders } from "./pages/Orders";
 import { Contact } from "./pages/Contact";
 import { Cart } from "./pages/Cart";
 import { Checkout } from "./pages/Checkout";
+import { OurStory } from "./pages/OurStory";
+import { Careers } from "./pages/Careers";
+import { Journal } from "./pages/Journal";
+import { PrivacyPolicy } from "./pages/PrivacyPolicy";
+import { TermsOfService } from "./pages/TermsOfService";
 import { Dashboard } from "./pages/Dashboard/Dashboard";
 import { DashboardLogin } from "./pages/Dashboard/DashboardLogin";
 
@@ -60,6 +65,21 @@ export const router = createBrowserRouter([{
   }, {
     path: "checkout",
     Component: Checkout
+  }, {
+    path: "our-story",
+    Component: OurStory
+  }, {
+    path: "careers",
+    Component: Careers
+  }, {
+    path: "journal",
+    Component: Journal
+  }, {
+    path: "privacy",
+    Component: PrivacyPolicy
+  }, {
+    path: "terms",
+    Component: TermsOfService
   }, {
     path: "product/:id",
     Component: ProductDetails

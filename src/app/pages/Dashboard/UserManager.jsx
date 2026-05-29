@@ -16,7 +16,7 @@ const AVAILABLE_PERMISSIONS = [
 export const UserManager = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState({ 
+  const [formData, setFormData] = useState({  
     name: '', 
     email: '', 
     password: '', 

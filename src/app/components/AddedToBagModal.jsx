@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ShoppingBag, ArrowRight, Check } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { getProductRouteId, resolveProductByIdentifier } from '../utils/product';
 export function AddedToBagModal() {
   const {
     isAddedModalOpen,
@@ -31,7 +32,7 @@ export function AddedToBagModal() {
   }, [isAddedModalOpen]);
 
   const product = useMemo(() => {
-    return liveProducts.find(p => String(p.id) === String(lastAddedProductId) || String(p.product_id) === String(lastAddedProductId)) ?? null;
+    return resolveProductByIdentifier(liveProducts, lastAddedProductId);
   }, [lastAddedProductId, liveProducts]);
 
   const suggestions = useMemo(() => {
@@ -197,20 +198,20 @@ function SuggestionCard({
     duration: 0.3,
     delay: 0.1
   }} className="group flex flex-col">
-      <Link to={`/product/${product.product_id || product.id}`} onClick={onClose} className="block relative aspect-[4/5] bg-[#f5f4f0] overflow-hidden mb-3">
+      <Link to={`/product/${getProductRouteId(product)}`} onClick={onClose} className="block relative aspect-[4/5] bg-[#f5f4f0] overflow-hidden mb-3">
         <img src={getImageUrl(product.image)} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]" />
         <div className="absolute inset-x-0 bottom-0 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
           <button onClick={e => {
           e.preventDefault();
           e.stopPropagation();
-          addToCart(product.product_id || product.id, 1);
+          addToCart(product, 1);
         }} className="w-full py-2.5 bg-[var(--foreground)] text-white text-[10px] uppercase tracking-[0.2em] hover:opacity-80 transition-opacity">
             Add to Bag
           </button>
         </div>
       </Link>
 
-      <Link to={`/product/${product.product_id || product.id}`} onClick={onClose} className="font-serif text-[var(--foreground)] text-sm leading-snug hover:text-[var(--primary)] transition-colors mb-1">
+      <Link to={`/product/${getProductRouteId(product)}`} onClick={onClose} className="font-serif text-[var(--foreground)] text-sm leading-snug hover:text-[var(--primary)] transition-colors mb-1">
         {product.name}
       </Link>
 

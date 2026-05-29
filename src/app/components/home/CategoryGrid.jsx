@@ -90,6 +90,19 @@ export function CategoryGrid({ data }) {
   return (
     <section className="py-20 md:py-32 bg-[var(--background)] overflow-hidden">
       <div className="container mx-auto px-4 md:px-8">
+        {/* Section Header */}
+        <div className="text-center mb-16">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-[var(--primary)] mb-4">
+            AMEYA
+          </p>
+          <h2 className="font-serif text-4xl md:text-5xl text-[var(--foreground)] mb-6">
+            Shop by Category
+          </h2>
+          <p className="text-[var(--muted-foreground)] text-lg max-w-2xl mx-auto">
+            Discover our exquisite range of fine jewelry pieces
+          </p>
+        </div>
+
         <div className="relative group/category">
           {/* Navigation Buttons */}
           {isCarousel && (

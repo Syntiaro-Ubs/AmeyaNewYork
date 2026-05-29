@@ -5,6 +5,7 @@ import { motion } from 'motion/react';
 import { Heart } from 'lucide-react';
 import { useWishlist } from '../context/WishlistContext';
 import { useQuickView } from '../context/QuickViewContext';
+import { getProductRouteId } from '../utils/product';
 export function ProductCard({
   product,
   index = 0
@@ -16,8 +17,8 @@ export function ProductCard({
   const {
     openQuickView
   } = useQuickView();
-  const idValue = product.product_id || product.id;
-  const wishlisted = isInWishlist(idValue);
+  const productRouteId = getProductRouteId(product);
+  const wishlisted = isInWishlist(product);
 
   const images = useMemo(() => {
     if (!product) return [];
@@ -54,7 +55,7 @@ export function ProductCard({
         {/* Wishlist heart — always accessible, stops propagation */}
         <button onClick={e => {
         e.stopPropagation();
-        toggleWishlist(idValue);
+        toggleWishlist(product);
       }} className={`absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center transition-all duration-300 ${wishlisted ? 'opacity-100 text-[var(--primary)]' : 'opacity-0 group-hover:opacity-100 text-[var(--foreground)] hover:text-[var(--primary)]'}`} aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}>
           <Heart size={16} strokeWidth={1.5} fill={wishlisted ? 'currentColor' : 'none'} />
         </button>
@@ -70,7 +71,7 @@ export function ProductCard({
       {/* ── Text below — name navigates to full PDP ── */}
       <div className="p-4 text-center">
         <h3 className="font-serif text-lg text-[var(--foreground)] mb-1 group-hover:text-[var(--primary)] transition-colors truncate">
-          <Link to={`/product/${product.id}`}>{product.name}</Link>
+          <Link to={`/product/${productRouteId}`}>{product.name}</Link>
         </h3>
         <p className="text-[var(--muted-foreground)] mb-2 uppercase tracking-wide text-xs">
           {product.category}

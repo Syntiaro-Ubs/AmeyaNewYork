@@ -14,47 +14,8 @@ const GALLERY_MODEL = collections[1]?.image || FALLBACK_IMAGE;
 const GALLERY_CLOSEUP = collections[2]?.image || FALLBACK_IMAGE;
 const GALLERY_LIFESTYLE = collections[0]?.image || FALLBACK_IMAGE;
 
-/* ── Material swatch palette ── */
-const ALL_SWATCHES = [{
-  label: '18k Yellow Gold',
-  short: 'Yellow',
-  color: '#D4AF37',
-  border: false
-}, {
-  label: '18k White Gold',
-  short: 'White',
-  color: '#E8E4E0',
-  border: true
-}, {
-  label: '18k Rose Gold',
-  short: 'Rose',
-  color: '#C89B94',
-  border: false
-}, {
-  label: 'Platinum',
-  short: 'Plat.',
-  color: '#DCDCDC',
-  border: true
-}, {
-  label: 'Sterling Silver',
-  short: 'Silver',
-  color: '#C0C0C0',
-  border: true
-}];
 
 /* ── Helpers ── */
-function detectActiveMaterials(material) {
-  if (!material) return [];
-  const m = material.toLowerCase();
-  const found = [];
-  if (m.includes('18k') && m.includes('yellow')) found.push('18k Yellow Gold');
-  if (m.includes('18k') && m.includes('white')) found.push('18k White Gold');
-  if (m.includes('18k') && m.includes('rose')) found.push('18k Rose Gold');
-  if (m.includes('platinum')) found.push('Platinum');
-  if (m.includes('sterling silver')) found.push('Sterling Silver');
-  if (found.length === 0 && m.includes('18k')) found.push('18k Yellow Gold');
-  return found;
-}
 function detectStones(material) {
   if (!material) return [];
   const m = material.toLowerCase();
@@ -145,7 +106,6 @@ function QuickViewContent({
   const idValue = product.product_id || product.id;
   const wishlisted = isInWishlist(idValue);
   const collection = product.collection ? collections.find(c => c.slug === product.collection) : null;
-  const activeMaterials = detectActiveMaterials(product.material);
   const stones = detectStones(product.material);
 
   /* Gallery images — use extra product gallery entries if available, else editorial */
@@ -262,16 +222,27 @@ function QuickViewContent({
 
               {/* Action buttons */}
               <div className="flex flex-col gap-2 mt-auto">
-                <button onClick={() => {
-                  addToCart(product.id, 1);
-                  closeQuickView();
-                }} className="w-full py-[11px] bg-[var(--foreground)] text-white text-[10px] uppercase tracking-[0.24em] hover:opacity-80 transition-opacity flex items-center justify-center gap-2">
-                  <ShoppingBag size={12} strokeWidth={1.5} /> Add to Bag
-                </button>
-                <button onClick={() => toggleWishlist(idValue)} className={`w-full py-[11px] border text-[10px] uppercase tracking-[0.22em] transition-all flex items-center justify-center gap-2 ${wishlisted ? 'border-[var(--foreground)] text-[var(--foreground)] bg-[#f5f4f2]' : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]'}`}>
-                  <Heart size={12} strokeWidth={1.5} fill={wishlisted ? 'currentColor' : 'none'} />
-                  {wishlisted ? 'Saved to Wishlist' : 'Save to Wishlist'}
-                </button>
+                {/* Main action buttons - side by side */}
+                <div className="flex gap-2">
+                  <button onClick={() => {
+                    addToCart(product.id, 1);
+                    closeQuickView();
+                    window.location.href = '/checkout';
+                  }} className="flex-1 py-[11px] bg-[var(--foreground)] text-white text-[10px] uppercase tracking-[0.24em] hover:opacity-80 transition-opacity flex items-center justify-center gap-1.5">
+                    <ShoppingBag size={12} strokeWidth={1.5} /> <span className="hidden sm:inline">Buy Now</span><span className="sm:hidden">Buy</span>
+                  </button>
+                  <button onClick={() => {
+                    addToCart(product.id, 1);
+                    closeQuickView();
+                    window.location.href = '/cart';
+                  }} className="flex-1 py-[11px] border border-[var(--foreground)] text-[var(--foreground)] text-[10px] uppercase tracking-[0.24em] hover:bg-[var(--foreground)] hover:text-white transition-all flex items-center justify-center gap-1.5">
+                    <ShoppingBag size={12} strokeWidth={1.5} /> <span className="hidden sm:inline">Add to Bag</span><span className="sm:hidden">Add</span>
+                  </button>
+                  <button onClick={() => toggleWishlist(idValue)} className={`flex-1 py-[11px] border text-[10px] uppercase tracking-[0.22em] transition-all flex items-center justify-center gap-1.5 ${wishlisted ? 'border-[var(--foreground)] text-[var(--foreground)] bg-[#f5f4f2]' : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--foreground)] hover:text-[var(--foreground)]'}`}>
+                    <Heart size={12} strokeWidth={1.5} fill={wishlisted ? 'currentColor' : 'none'} />
+                    <span className="hidden sm:inline">{wishlisted ? 'Saved' : 'Wishlist'}</span>
+                  </button>
+                </div>
                 <Link to={`/product/${product.id}`} onClick={closeQuickView} className="flex items-center justify-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors pt-1">
                   View Full Details <ArrowRight size={10} strokeWidth={1.5} />
                 </Link>
@@ -279,31 +250,6 @@ function QuickViewContent({
             </div>
           </div>
 
-          {/* ══════════════════════════════════
-              SECTION 2 — Also Available In (material swatches)
-           ══════════════════════════════════ */}
-          <div className="px-7 pb-7 border-b border-[var(--border)]">
-            <p className="text-[9px] uppercase tracking-[0.28em] text-[var(--muted-foreground)] mb-4">
-              Also Available In
-            </p>
-            <div className="flex flex-wrap gap-5">
-              {ALL_SWATCHES.map(swatch => {
-              const isActive = activeMaterials.includes(swatch.label);
-              return <div key={swatch.label} className="flex flex-col items-center gap-1.5">
-                    <div className={`w-9 h-9 rounded-full transition-all duration-200 cursor-pointer ${isActive ? 'ring-2 ring-offset-2 ring-[var(--foreground)] scale-110' : 'opacity-45 hover:opacity-70 hover:scale-105'}`} style={{
-                  backgroundColor: swatch.color,
-                  border: swatch.border ? '1.5px solid #bbb' : 'none'
-                }} title={swatch.label} />
-                    <span className={`text-[9px] uppercase tracking-[0.1em] whitespace-nowrap ${isActive ? 'text-[var(--foreground)]' : 'text-[var(--muted-foreground)]'}`}>
-                      {swatch.short}
-                    </span>
-                  </div>;
-            })}
-            </div>
-            <p className="mt-4 text-[10px] text-[var(--muted-foreground)] font-light italic leading-relaxed">
-              Contact your advisor to commission this piece in your preferred material.
-            </p>
-          </div>
 
           {/* ══════════════════════════════════
               SECTION 3 — Editorial Gallery (3 images)

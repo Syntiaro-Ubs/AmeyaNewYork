@@ -23,7 +23,7 @@ export function Hero({ data }) {
         >
           <MediaRenderer 
             src={media} 
-            alt="Luxury Fine Jewelry" 
+            alt="AMEYA New York" 
             className="w-full h-full object-cover object-[right_60%_0%]" 
           />
         </motion.div>
@@ -37,21 +37,12 @@ export function Hero({ data }) {
         <div className="flex-1" />
 
         {/* Bottom Content */}
-        <div className="flex flex-col items-center text-center max-w-5xl mx-auto mb-10 md:mb-14">
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            transition={{ duration: 0.8, delay: 0.7 }} 
-            className="text-[11px] md:text-sm uppercase tracking-[0.35em] font-medium text-white/70 font-sans mb-8 md:mb-10"
-          >
-            {subtitle}
-          </motion.p>
-
+        <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-10 md:mb-14">
           <motion.h2
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.5 }}
-            className="text-4xl md:text-7xl lg:text-8xl font-serif text-white mb-10 tracking-tight leading-[1.1]"
+            className="text-xs md:text-sm lg:text-base font-light text-white mb-10 tracking-[0.3em] leading-relaxed uppercase"
           >
             {title}
           </motion.h2>

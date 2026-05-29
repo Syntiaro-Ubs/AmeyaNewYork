@@ -39,6 +39,22 @@ export function BrandStory({ data }) {
   return (
     <section className="py-24 md:py-32 bg-[var(--background)]">
       <div className="container mx-auto px-4 md:px-8">
+        {/* Section Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-16"
+        >
+          <p className="text-[11px] md:text-xs uppercase tracking-[0.3em] text-[var(--primary)] mb-6 font-medium">
+            {sectionSubtitle}
+          </p>
+          <h2 className="font-serif text-4xl md:text-5xl text-[var(--foreground)] leading-tight">
+            {sectionTitle}
+          </h2>
+        </motion.div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-20">
           {signatureCollections.map((collection, index) => (
             <motion.div 

@@ -131,9 +131,6 @@ export function ProductDetails() {
       </div>;
   }
   const collectionInfo = product.collection ? collections.find(c => c.slug === product.collection) : null;
-  const handleAddToBag = () => {
-    addToCart(product.id, 1);
-  };
   const wishlisted = isInWishlist(product.id);
 
   /* Thumbnail labels: if multiple gallery images, use "View N" unless we have material variants */
@@ -234,16 +231,30 @@ export function ProductDetails() {
 
               {/* ── CTA Buttons ── */}
               <div className="flex flex-col gap-3 mb-6">
-                {/* Add to Cart */}
-                <button onClick={handleAddToBag} className="w-full py-3 px-8 text-[11px] uppercase tracking-[0.22em] transition-all duration-300 flex items-center justify-center gap-3 bg-[var(--foreground)] text-white hover:opacity-80">
-                  <ShoppingBag size={13} strokeWidth={1.5} /> Add to Bag
-                </button>
+                {/* Main action buttons - side by side */}
+                <div className="flex gap-3">
+                  {/* Buy Now - Goes directly to checkout */}
+                  <button onClick={() => {
+                    addToCart(product.id, 1);
+                    navigate('/checkout');
+                  }} className="flex-1 py-3 px-4 text-[11px] uppercase tracking-[0.22em] transition-all duration-300 flex items-center justify-center gap-2 bg-[var(--foreground)] text-white hover:opacity-80">
+                    <ShoppingBag size={13} strokeWidth={1.5} /> Buy Now
+                  </button>
 
-                {/* Wishlist */}
-                <button onClick={() => toggleWishlist(product.id)} className={`w-full py-3 px-8 text-[11px] uppercase tracking-[0.22em] border transition-all duration-300 flex items-center justify-center gap-3 ${wishlisted ? 'border-[var(--foreground)] text-[var(--foreground)] bg-[#f5f4f2]' : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] bg-[#faf9f7]'}`}>
-                  <Heart size={13} strokeWidth={1.5} fill={wishlisted ? 'currentColor' : 'none'} />
-                  {wishlisted ? 'Saved to Wishlist' : 'Save to Wishlist'}
-                </button>
+                  {/* Add to Bag - Goes to cart page */}
+                  <button onClick={() => {
+                    addToCart(product.id, 1);
+                    navigate('/cart');
+                  }} className="flex-1 py-3 px-4 text-[11px] uppercase tracking-[0.22em] border border-[var(--foreground)] text-[var(--foreground)] hover:bg-[var(--foreground)] hover:text-white transition-all duration-300 flex items-center justify-center gap-2">
+                    <ShoppingBag size={13} strokeWidth={1.5} /> Add to Bag
+                  </button>
+
+                  {/* Wishlist */}
+                  <button onClick={() => toggleWishlist(product.id)} className={`flex-1 py-3 px-4 text-[11px] uppercase tracking-[0.22em] border transition-all duration-300 flex items-center justify-center gap-2 ${wishlisted ? 'border-[var(--foreground)] text-[var(--foreground)] bg-[#f5f4f2]' : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] bg-[#faf9f7]'}`}>
+                    <Heart size={13} strokeWidth={1.5} fill={wishlisted ? 'currentColor' : 'none'} />
+                    <span className="hidden sm:inline">{wishlisted ? 'Saved' : 'Wishlist'}</span>
+                  </button>
+                </div>
 
                 {/* Contact Advisor */}
                 <button className="w-full py-3 px-8 text-[11px] uppercase tracking-[0.22em] border border-[var(--border)] bg-[#f5f1eb] text-[var(--foreground)] hover:bg-[#ede9e1] transition-colors flex items-center justify-center gap-3">

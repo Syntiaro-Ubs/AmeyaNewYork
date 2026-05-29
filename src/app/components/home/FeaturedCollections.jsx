@@ -39,7 +39,7 @@ export function FeaturedCollections({ data }) {
   }).filter(Boolean);
 
   return (
-    <section className="bg-[var(--background)] pb-24">
+    <section id="collections" className="bg-[var(--background)] pb-24">
       <div className="container mx-auto px-4 md:px-8 space-y-24">
         {featuredCollections.map((collection, index) => (
           <motion.div 
