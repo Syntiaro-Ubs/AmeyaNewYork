@@ -23,6 +23,53 @@ router.post('/:email', async (req, res) => {
     const { email } = req.params;
     const { productId, quantity, size } = req.body;
 
+    // Fetch product details to check stock
+    const [products] = await db.query(
+      'SELECT category, sizes, size_stock, stock_quantity FROM products WHERE id = ? OR product_id = ?',
+      [productId, productId]
+    );
+    if (products.length === 0) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    const product = products[0];
+    const cat = product.category?.toLowerCase();
+    
+    // Check stock limit
+    let limit = product.stock_quantity !== undefined ? Number(product.stock_quantity) : Infinity;
+    if ((cat === 'bracelets' || cat === 'rings') && size) {
+      if (product.size_stock) {
+        try {
+          const sizeStock = typeof product.size_stock === 'string' ? JSON.parse(product.size_stock) : product.size_stock;
+          const szKey = size.trim();
+          const matchingKey = Object.keys(sizeStock).find(k => k.toLowerCase() === szKey.toLowerCase());
+          if (matchingKey !== undefined) {
+            limit = Number(sizeStock[matchingKey]);
+          } else {
+            limit = 0;
+          }
+        } catch (e) {
+          console.error('Error parsing size_stock:', e);
+          limit = 0;
+        }
+      } else {
+        limit = 0;
+      }
+    }
+
+    // Get current quantity in cart for this item
+    const [cartRows] = await db.query(
+      'SELECT quantity FROM cart_items WHERE user_email = ? AND product_id = ? AND size = ?',
+      [email, productId, size || '']
+    );
+    const currentQty = cartRows.length > 0 ? Number(cartRows[0].quantity) : 0;
+
+    if (currentQty + quantity > limit) {
+      return res.status(400).json({ 
+        message: `Only ${limit} pieces are available in size ${size}. You already have ${currentQty} in your cart.` 
+      });
+    }
+
     // Use INSERT ... ON DUPLICATE KEY UPDATE since we have a UNIQUE KEY on (user_email, product_id, size)
     const [result] = await db.query(
       `INSERT INTO cart_items (user_email, product_id, quantity, size) 
@@ -43,6 +90,46 @@ router.put('/:email/:productId', async (req, res) => {
   try {
     const { email, productId } = req.params;
     const { quantity, size } = req.body;
+
+    // Fetch product details to check stock
+    const [products] = await db.query(
+      'SELECT category, sizes, size_stock, stock_quantity FROM products WHERE id = ? OR product_id = ?',
+      [productId, productId]
+    );
+    if (products.length === 0) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    const product = products[0];
+    const cat = product.category?.toLowerCase();
+    
+    // Check stock limit
+    let limit = product.stock_quantity !== undefined ? Number(product.stock_quantity) : Infinity;
+    if ((cat === 'bracelets' || cat === 'rings') && size) {
+      if (product.size_stock) {
+        try {
+          const sizeStock = typeof product.size_stock === 'string' ? JSON.parse(product.size_stock) : product.size_stock;
+          const szKey = size.trim();
+          const matchingKey = Object.keys(sizeStock).find(k => k.toLowerCase() === szKey.toLowerCase());
+          if (matchingKey !== undefined) {
+            limit = Number(sizeStock[matchingKey]);
+          } else {
+            limit = 0;
+          }
+        } catch (e) {
+          console.error('Error parsing size_stock:', e);
+          limit = 0;
+        }
+      } else {
+        limit = 0;
+      }
+    }
+
+    if (quantity > limit) {
+      return res.status(400).json({ 
+        message: `Only ${limit} pieces are available in size ${size || 'N/A'}.` 
+      });
+    }
 
     await db.query(
       'UPDATE cart_items SET quantity = ? WHERE user_email = ? AND product_id = ? AND size = ?',

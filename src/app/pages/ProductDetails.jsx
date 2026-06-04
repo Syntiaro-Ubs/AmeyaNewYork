@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { getImageUrl } from '../utils/image';
 import { useParams, Link, useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ShoppingBag, Heart, MapPin, MessageSquare, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ShoppingBag, Heart, MapPin, MessageSquare, ChevronDown, X } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useSiteData } from '../context/SiteDataContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -53,6 +53,28 @@ function Accordion({
     </div>;
 }
 
+const ringSizingData = [
+  { size: '3', diameter: '14.1', circumference: '44.2', uk: 'F', kr: '4', eu: '44' },
+  { size: '3.5', diameter: '14.5', circumference: '45.5', uk: 'G', kr: '5', eu: '45.5' },
+  { size: '4', diameter: '14.9', circumference: '46.8', uk: 'H 1/2', kr: '6', eu: '46.5' },
+  { size: '4.5', diameter: '15.3', circumference: '48.0', uk: 'I 1/2', kr: '7', eu: '48' },
+  { size: '5', diameter: '15.7', circumference: '49.3', uk: 'J 1/2', kr: '9', eu: '49' },
+  { size: '5.5', diameter: '16.1', circumference: '50.6', uk: 'L', kr: '10', eu: '50.5' },
+  { size: '6', diameter: '16.5', circumference: '51.9', uk: 'M', kr: '11', eu: '51.5' },
+  { size: '6.5', diameter: '16.9', circumference: '53.1', uk: 'N', kr: '13', eu: '53' },
+  { size: '7', diameter: '17.3', circumference: '54.4', uk: 'O', kr: '14', eu: '54' },
+  { size: '7.5', diameter: '17.7', circumference: '55.7', uk: 'P', kr: '15', eu: '55.5' },
+  { size: '8', diameter: '18.1', circumference: '57.0', uk: 'Q', kr: '16', eu: '56.5' },
+  { size: '8.5', diameter: '18.5', circumference: '58.3', uk: 'R 1/2', kr: '17', eu: '58' },
+  { size: '9', diameter: '18.9', circumference: '59.5', uk: 'S 1/2', kr: '18', eu: '59' },
+  { size: '9.5', diameter: '19.4', circumference: '60.8', uk: 'T 1/2', kr: '19', eu: '60.5' },
+  { size: '10', diameter: '19.8', circumference: '62.1', uk: 'U 1/2', kr: '21', eu: '61.5' },
+  { size: '10.5', diameter: '20.2', circumference: '63.4', uk: 'W', kr: '22', eu: '63' },
+  { size: '11', diameter: '20.6', circumference: '64.6', uk: 'X', kr: '23', eu: '64' },
+  { size: '11.5', diameter: '21.0', circumference: '65.9', uk: 'Y', kr: '24', eu: '65.5' },
+  { size: '12', diameter: '21.4', circumference: '67.2', uk: 'Z', kr: '25', eu: '66.5' }
+];
+
 /* ══════════════════════════════════════════
    PRODUCT DETAILS PAGE
 ══════════════════════════════════════════ */
@@ -75,6 +97,57 @@ export function ProductDetails() {
   const {
     collections
   } = useSiteData();
+
+  const [selectedSize, setSelectedSize] = useState('Medium');
+  const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
+  const [sizeGuideTab, setSizeGuideTab] = useState('select'); // 'select' or 'fit'
+  const [ringCountry, setRingCountry] = useState('US'); // 'US', 'UK', 'KR', 'EU'
+
+  const sizeStock = useMemo(() => {
+    if (!product || !product.size_stock) return {};
+    try {
+      return typeof product.size_stock === 'string'
+        ? JSON.parse(product.size_stock)
+        : product.size_stock;
+    } catch (e) {
+      console.error('Error parsing size_stock:', e);
+      return {};
+    }
+  }, [product]);
+
+  const isSizeOutOfStock = (sz) => {
+    if (!product || !product.size_stock) return false;
+    return sizeStock[sz] !== undefined && Number(sizeStock[sz]) <= 0;
+  };
+
+  const availableSizes = useMemo(() => {
+    if (!product) return [];
+    const cat = product.category?.toLowerCase();
+    if (cat !== 'bracelets' && cat !== 'rings') return [];
+    if (!product.sizes) {
+      return cat === 'rings'
+        ? ['3', '3.5', '4', '4.5', '5', '5.5', '6', '6.5', '7', '7.5', '8', '8.5', '9', '9.5', '10', '10.5', '11', '11.5', '12']
+        : ['Small', 'Medium', 'Large'];
+    }
+    return product.sizes.split(',').map(s => s.trim()).filter(Boolean);
+  }, [product]);
+
+  useEffect(() => {
+    if (availableSizes.length > 0) {
+      const cat = product?.category?.toLowerCase();
+      const firstInStock = availableSizes.find(sz => !isSizeOutOfStock(sz));
+      
+      if (firstInStock) {
+        setSelectedSize(firstInStock);
+      } else {
+        if (cat === 'rings') {
+          setSelectedSize(availableSizes.includes('6') ? '6' : availableSizes[0]);
+        } else {
+          setSelectedSize(availableSizes.includes('Medium') ? 'Medium' : availableSizes[0]);
+        }
+      }
+    }
+  }, [availableSizes, product, sizeStock]);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -229,24 +302,85 @@ export function ProductDetails() {
                   </div>
                 </div>}
 
+              {/* ── Size & Size Guide (Bracelets & Rings Only) ── */}
+              {(product.category?.toLowerCase() === 'bracelets' || product.category?.toLowerCase() === 'rings') && availableSizes.length > 0 && (
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-3 text-xs tracking-wide">
+                    <span className="text-[11px] uppercase tracking-[0.18em] text-[var(--foreground)] font-medium">
+                      Size: <span className="font-light text-[var(--muted-foreground)] capitalize">{selectedSize}</span>
+                    </span>
+                    <button 
+                      onClick={() => setIsSizeGuideOpen(true)}
+                      className="text-[10px] uppercase tracking-[0.2em] text-[var(--foreground)] border-b border-[var(--foreground)] pb-px hover:text-[var(--primary)] hover:border-[var(--primary)] transition-all font-medium"
+                    >
+                      Size Guide
+                    </button>
+                  </div>
+                  <div className="flex gap-2.5 flex-wrap">
+                    {availableSizes.map((sz) => {
+                      const outOfStock = isSizeOutOfStock(sz);
+                      return (
+                        <button
+                          key={sz}
+                          disabled={outOfStock}
+                          onClick={() => !outOfStock && setSelectedSize(sz)}
+                          className={`py-2.5 px-3 border text-[10px] uppercase tracking-[0.12em] transition-all min-w-[44px] text-center relative ${
+                            outOfStock
+                              ? 'border-neutral-200 text-neutral-300 opacity-40 line-through cursor-not-allowed bg-neutral-50'
+                              : selectedSize === sz
+                                ? 'border-[var(--foreground)] text-[var(--foreground)] bg-[#f5f4f2] font-semibold'
+                                : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--foreground)] hover:text-[var(--foreground)] bg-[#faf9f7]'
+                          }`}
+                        >
+                          {sz}
+                          {outOfStock && (
+                            <span className="absolute -top-1.5 -right-1 bg-neutral-900 text-white text-[7px] px-1 py-0.2 scale-75 font-normal tracking-normal rounded-sm">
+                              Sold Out
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* ── CTA Buttons ── */}
               <div className="flex flex-col gap-3 mb-6">
                 {/* Main action buttons - side by side */}
                 <div className="flex gap-3">
                   {/* Buy Now - Goes directly to checkout */}
-                  <button onClick={() => {
-                    addToCart(product.id, 1);
-                    navigate('/checkout');
-                  }} className="flex-1 py-3 px-4 text-[11px] uppercase tracking-[0.22em] transition-all duration-300 flex items-center justify-center gap-2 bg-[var(--foreground)] text-white hover:opacity-80">
-                    <ShoppingBag size={13} strokeWidth={1.5} /> Buy Now
+                  <button 
+                    disabled={isSizeOutOfStock(selectedSize)}
+                    onClick={() => {
+                      addToCart(product.id, 1, (product.category?.toLowerCase() === 'bracelets' || product.category?.toLowerCase() === 'rings') ? selectedSize : undefined);
+                      navigate('/checkout');
+                    }} 
+                    className={`flex-1 py-3 px-4 text-[11px] uppercase tracking-[0.22em] transition-all duration-300 flex items-center justify-center gap-2 ${
+                      isSizeOutOfStock(selectedSize)
+                        ? 'bg-neutral-100 border-neutral-200 text-neutral-400 cursor-not-allowed opacity-60'
+                        : 'bg-[var(--foreground)] text-white hover:opacity-80'
+                    }`}
+                  >
+                    {!isSizeOutOfStock(selectedSize) && <ShoppingBag size={13} strokeWidth={1.5} />}
+                    {isSizeOutOfStock(selectedSize) ? 'Out of Stock' : 'Buy Now'}
                   </button>
 
                   {/* Add to Bag - Goes to cart page */}
-                  <button onClick={() => {
-                    addToCart(product.id, 1);
-                    navigate('/cart');
-                  }} className="flex-1 py-3 px-4 text-[11px] uppercase tracking-[0.22em] border border-[var(--foreground)] text-[var(--foreground)] hover:bg-[var(--foreground)] hover:text-white transition-all duration-300 flex items-center justify-center gap-2">
-                    <ShoppingBag size={13} strokeWidth={1.5} /> Add to Bag
+                  <button 
+                    disabled={isSizeOutOfStock(selectedSize)}
+                    onClick={() => {
+                      addToCart(product.id, 1, (product.category?.toLowerCase() === 'bracelets' || product.category?.toLowerCase() === 'rings') ? selectedSize : undefined);
+                      navigate('/cart');
+                    }} 
+                    className={`flex-1 py-3 px-4 text-[11px] uppercase tracking-[0.22em] border transition-all duration-300 flex items-center justify-center gap-2 ${
+                      isSizeOutOfStock(selectedSize)
+                        ? 'border-neutral-200 bg-neutral-50 text-neutral-400 cursor-not-allowed opacity-60'
+                        : 'border-[var(--foreground)] text-[var(--foreground)] hover:bg-[var(--foreground)] hover:text-white'
+                    }`}
+                  >
+                    {!isSizeOutOfStock(selectedSize) && <ShoppingBag size={13} strokeWidth={1.5} />}
+                    {isSizeOutOfStock(selectedSize) ? 'Sold Out' : 'Add to Bag'}
                   </button>
 
                   {/* Wishlist */}
@@ -371,6 +505,296 @@ export function ProductDetails() {
       <div className="bg-[var(--background)]">
         <RecommendationSections product={product} />
       </div>
+
+      {/* ── Size Guide Slide-Over Panel ── */}
+      <AnimatePresence>
+        {isSizeGuideOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-[100] backdrop-blur-xs"
+              onClick={() => setIsSizeGuideOpen(false)}
+            />
+            {/* Slide-over panel */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
+              className="fixed right-0 top-0 bottom-0 w-full sm:w-[500px] max-w-full bg-white z-[110] shadow-2xl flex flex-col"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border)]">
+                <span className="text-[10px] uppercase tracking-[0.24em] text-[var(--muted-foreground)]">
+                  AMEYA NEW YORK · SIZE GUIDE
+                </span>
+                <button
+                  onClick={() => setIsSizeGuideOpen(false)}
+                  className="w-8 h-8 flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  <X size={18} strokeWidth={1.5} />
+                </button>
+              </div>
+
+              {/* Tabs selector */}
+              <div className="flex border-b border-[var(--border)] text-center text-xs tracking-wider uppercase font-medium">
+                <button
+                  type="button"
+                  onClick={() => setSizeGuideTab('select')}
+                  className={`flex-1 py-4 border-b-2 transition-all ${
+                    sizeGuideTab === 'select'
+                      ? 'border-[var(--foreground)] text-[var(--foreground)] font-semibold'
+                      : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                  }`}
+                >
+                  Select Your Size
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSizeGuideTab('fit')}
+                  className={`flex-1 py-4 border-b-2 transition-all ${
+                    sizeGuideTab === 'fit'
+                      ? 'border-[var(--foreground)] text-[var(--foreground)] font-semibold'
+                      : 'border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                  }`}
+                >
+                  Find Your Perfect Fit
+                </button>
+              </div>
+
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {sizeGuideTab === 'select' ? (
+                  <div className="space-y-6">
+                    {product.category?.toLowerCase() === 'rings' ? (
+                      <>
+                        <div className="flex justify-between items-center gap-4">
+                          <h3 className="font-serif text-[1.4rem] text-[var(--foreground)]">Ring Sizing</h3>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wider">Region:</span>
+                            <select 
+                              value={ringCountry} 
+                              onChange={(e) => setRingCountry(e.target.value)}
+                              className="bg-transparent border-b border-[var(--border)] font-medium text-[var(--foreground)] focus:outline-none uppercase text-[10px] tracking-wider py-0.5 cursor-pointer"
+                            >
+                              <option value="US">UNITED STATES</option>
+                              <option value="UK">UNITED KINGDOM</option>
+                              <option value="KR">SOUTH KOREA</option>
+                              <option value="EU">GERMANY/FRANCE/ITALY</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Measurement Table for Rings */}
+                        <div className="border border-[var(--border)] rounded-lg overflow-hidden">
+                          <div className="max-h-[300px] overflow-y-auto">
+                            <table className="w-full text-left border-collapse text-xs">
+                              <thead className="sticky top-0 bg-white z-10">
+                                <tr className="bg-neutral-50 border-b border-[var(--border)] text-[9px] uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
+                                  <th className="p-3">US Size</th>
+                                  <th className="p-3">
+                                    {ringCountry === 'US' && 'US Size'}
+                                    {ringCountry === 'UK' && 'UK Size'}
+                                    {ringCountry === 'KR' && 'KR Size'}
+                                    {ringCountry === 'EU' && 'Europe Size'}
+                                  </th>
+                                  <th className="p-3">Diameter</th>
+                                  <th className="p-3">Circumference</th>
+                                  <th className="p-3 text-right pr-4">Select</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-[var(--border)] text-[var(--foreground)]">
+                                {ringSizingData.map((item) => {
+                                  const isAvailable = availableSizes.includes(item.size) && !isSizeOutOfStock(item.size);
+                                  const isSelected = selectedSize === item.size;
+                                  const localSize = ringCountry === 'UK' ? item.uk : (ringCountry === 'KR' ? item.kr : (ringCountry === 'EU' ? item.eu : item.size));
+                                  return (
+                                    <tr 
+                                      key={item.size} 
+                                      className={`transition-colors ${isSelected ? 'bg-neutral-50 font-semibold' : ''} ${isAvailable ? 'hover:bg-neutral-50/50 cursor-pointer' : 'opacity-50'}`}
+                                      onClick={() => {
+                                        if (isAvailable) setSelectedSize(item.size);
+                                      }}
+                                    >
+                                      <td className="p-3 font-medium">Size {item.size}</td>
+                                      <td className="p-3 text-[var(--muted-foreground)]">{localSize}</td>
+                                      <td className="p-3 text-[var(--muted-foreground)]">{item.diameter} mm</td>
+                                      <td className="p-3 text-[var(--muted-foreground)]">{item.circumference} mm</td>
+                                      <td className="p-3 text-right pr-4">
+                                        {isAvailable ? (
+                                          <div className="inline-flex items-center justify-center">
+                                            <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${
+                                              isSelected ? 'border-[var(--foreground)] bg-[var(--foreground)]' : 'border-neutral-300'
+                                            }`}>
+                                              {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <span className="text-[9px] text-[var(--muted-foreground)] underline cursor-not-allowed decoration-dotted">Notify me</span>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <h3 className="font-serif text-[1.4rem] text-[var(--foreground)]">Bracelet Sizing</h3>
+                        
+                        {/* Measurement Table for Bracelets */}
+                        <div className="border border-[var(--border)] rounded-lg overflow-hidden">
+                          <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                              <tr className="bg-neutral-50 border-b border-[var(--border)] text-[9px] uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
+                                <th className="p-3">AMEYA Size</th>
+                                <th className="p-3">Wrist (Inches)</th>
+                                <th className="p-3">Wrist (Centimeters)</th>
+                                <th className="p-3 text-right pr-4">Selected</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[var(--border)] text-[var(--foreground)]">
+                              {[
+                                { name: 'Small', inches: '5.26 - 5.75 in.', cm: '13.4 - 14.6 cm' },
+                                { name: 'Medium', inches: '5.76 - 6.25 in.', cm: '14.6 - 15.9 cm' },
+                                { name: 'Large', inches: '6.26 - 6.75 in.', cm: '15.9 - 17.1 cm' }
+                              ].map((item) => {
+                                const outOfStock = isSizeOutOfStock(item.name);
+                                const isSelected = selectedSize === item.name;
+                                return (
+                                  <tr 
+                                    key={item.name} 
+                                    className={`transition-colors ${outOfStock ? 'opacity-40 cursor-not-allowed' : 'hover:bg-neutral-50/50 cursor-pointer'} ${isSelected && !outOfStock ? 'bg-neutral-50 font-medium' : ''}`}
+                                    onClick={() => !outOfStock && setSelectedSize(item.name)}
+                                  >
+                                    <td className="p-3.5 capitalize font-medium">
+                                      {item.name}
+                                      {outOfStock && <span className="ml-2 text-[9px] text-neutral-400 normal-case italic">(sold out)</span>}
+                                    </td>
+                                    <td className="p-3.5 text-[var(--muted-foreground)]">{item.inches}</td>
+                                    <td className="p-3.5 text-[var(--muted-foreground)]">{item.cm}</td>
+                                    <td className="p-3.5 text-right pr-4">
+                                      {outOfStock ? (
+                                        <span className="text-[9px] text-[var(--muted-foreground)] underline cursor-not-allowed decoration-dotted">Notify me</span>
+                                      ) : (
+                                        <div className="inline-flex items-center justify-center">
+                                          <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${
+                                            isSelected ? 'border-[var(--foreground)] bg-[var(--foreground)]' : 'border-neutral-300'
+                                          }`}>
+                                            {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    )}
+
+                    {product.size_guide && (
+                      <div className="bg-neutral-50 p-4 rounded-xl border border-[var(--border)] text-xs leading-relaxed text-[var(--muted-foreground)]">
+                        <p className="font-medium text-[var(--foreground)] uppercase tracking-wider text-[9px] mb-1.5">Note From Atelier</p>
+                        <p className="whitespace-pre-line break-words">{product.size_guide}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-6 text-xs text-[var(--muted-foreground)] leading-relaxed">
+                    {product.category?.toLowerCase() === 'rings' ? (
+                      <>
+                        <h3 className="font-serif text-[1.4rem] text-[var(--foreground)]">Find Your Ring Size</h3>
+                        
+                        {/* Ring Measurement SVG Illustration */}
+                        <div className="w-full aspect-[4/3] bg-neutral-50 border border-[var(--border)] rounded-2xl flex items-center justify-center p-6">
+                          <svg width="220" height="150" viewBox="0 0 220 150" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-neutral-400 opacity-80">
+                            {/* Finger Outline */}
+                            <path d="M75 140 C 75 80, 85 45, 110 45 C 135 45, 145 80, 145 140" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+                            {/* Measuring Paper Strip wrapped around finger */}
+                            <path d="M80 85 C 95 80, 125 80, 140 85 L 143 93 C 125 88, 95 88, 77 93 Z" fill="var(--primary)" fillOpacity="0.15" stroke="var(--primary)" strokeWidth="1.2" />
+                            {/* Tape Measure ticks on the strip */}
+                            <path d="M90 84 L 90 88 M100 83 L 100 87 M110 83 L 110 87 M120 83 L 120 87 M130 84 L 130 88" stroke="var(--primary)" strokeWidth="0.8" />
+                            {/* Measurement line / arrow */}
+                            <path d="M60 88 L 72 88 M148 88 L 160 88" stroke="currentColor" strokeWidth="1" strokeDasharray="2 2" />
+                            <text x="110" y="115" fill="var(--primary)" textAnchor="middle" className="text-[10px] font-sans font-bold tracking-wider">MEASURE FINGER</text>
+                          </svg>
+                        </div>
+
+                        <p>
+                          Size your rings to fit comfortably on your finger; it should be snug enough so that it will not fall off, but loose enough to slide over your knuckle.
+                        </p>
+
+                        <ol className="space-y-4 list-decimal pl-4 text-xs">
+                          <li>
+                            <strong>Use a strip of paper or a piece of non-stretchable string.</strong>
+                          </li>
+                          <li>
+                            <strong>Wrap it snugly around the base of the finger you wish to measure.</strong> Mark the point on the paper or string where the ends meet. If your knuckle is significantly larger than the base of your finger, measure both and choose a size in between.
+                          </li>
+                          <li>
+                            <strong>Measure the paper or string length in millimeters</strong> using a ruler. Compare your measurement to the Circumference (MM) column in our sizing chart to find your perfect size.
+                          </li>
+                        </ol>
+                      </>
+                    ) : (
+                      <>
+                        <h3 className="font-serif text-[1.4rem] text-[var(--foreground)]">Find Your Bracelet Size</h3>
+                        
+                        {/* Bracelet Measurement SVG Illustration */}
+                        <div className="w-full aspect-[4/3] bg-neutral-50 border border-[var(--border)] rounded-2xl flex items-center justify-center p-6">
+                          <svg width="220" height="150" viewBox="0 0 220 150" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-neutral-400 opacity-80">
+                            <path d="M20 120 C 50 110, 80 100, 110 80 C 130 65, 150 45, 170 45 C 185 45, 195 55, 195 65 C 195 72, 185 85, 160 90 C 140 95, 110 110, 80 120" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+                            <path d="M170 45 C 160 25, 140 10, 120 12 C 105 13, 95 25, 98 38 C 100 48, 115 55, 130 52 C 145 49, 160 35, 170 45" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" fill="none" />
+                            <path d="M125 70 C 115 65, 105 75, 115 85 C 125 95, 135 85, 125 70 Z" stroke="var(--primary)" strokeWidth="2.5" strokeDasharray="3 2" fill="none" />
+                            <text x="110" y="105" fill="var(--primary)" className="text-[10px] font-sans font-bold tracking-wider">MEASURE WRIST</text>
+                          </svg>
+                        </div>
+
+                        <p>
+                          Size your cuffs and bangles to fit snugly, and your link and chain bracelets to fit slightly loosely to allow for movement.
+                        </p>
+
+                        <ol className="space-y-4 list-decimal pl-4 text-xs">
+                          <li>
+                            <strong>Use a flexible measuring tape or length of string.</strong>
+                          </li>
+                          <li>
+                            <strong>Wrap it around the thickest part of the wrist (usually at the wrist joint).</strong> If using string, mark the point on the string where the ends meet with a pen. If you are creating a bracelet stack, measure the point on your arm where you'll wear each bracelet.
+                          </li>
+                          <li>
+                            <strong>Lay the string on a flat surface and use a ruler to measure the length</strong> (in inches or centimeters) up to the mark. Compare your measurement to the size chart to determine your bracelet size. If you are between sizes, opt for the larger size.
+                          </li>
+                        </ol>
+                      </>
+                    )}
+
+                    <div className="pt-4 border-t border-[var(--border)] space-y-3">
+                      <p className="font-serif text-[1.1rem] text-[var(--foreground)]">AMEYA At Your Service</p>
+                      <p>
+                        There is no question too small or request too large for AMEYA client advisors. From choosing a gift to providing sizing assistance, we're always at your service.
+                      </p>
+                      <div className="flex gap-3 pt-2">
+                        <Link to="/contact" onClick={() => setIsSizeGuideOpen(false)} className="flex-1 py-3 border border-[var(--foreground)] text-center text-[10px] uppercase tracking-[0.2em] text-[var(--foreground)] hover:bg-[var(--foreground)] hover:text-white transition-all">
+                          Book Sizing Consultation
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>;
 }
 

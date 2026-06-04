@@ -6,7 +6,8 @@ async function addMissingColumns() {
       { name: 'care_instructions', sql: 'ALTER TABLE products ADD COLUMN care_instructions TEXT' },
       { name: 'shipping_returns', sql: 'ALTER TABLE products ADD COLUMN shipping_returns TEXT' },
       { name: 'size_guide', sql: 'ALTER TABLE products ADD COLUMN size_guide TEXT' },
-      { name: 'stock_quantity', sql: 'ALTER TABLE products ADD COLUMN stock_quantity INT DEFAULT 0' }
+      { name: 'stock_quantity', sql: 'ALTER TABLE products ADD COLUMN stock_quantity INT DEFAULT 0' },
+      { name: 'size_stock', sql: 'ALTER TABLE products ADD COLUMN size_stock TEXT' }
     ];
 
     for (const col of columns) {

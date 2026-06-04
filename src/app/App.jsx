@@ -6,6 +6,8 @@ import { WishlistProvider } from './context/WishlistContext';
 import { QuickViewProvider } from './context/QuickViewContext';
 import { OrderProvider } from './context/OrderContext';
 import { SiteDataProvider } from './context/SiteDataContext';
+import { Toaster } from './components/ui/sonner';
+
 export default function App() {
   return <AuthProvider>
       <CartProvider>
@@ -14,6 +16,7 @@ export default function App() {
             <QuickViewProvider>
               <OrderProvider>
                 <RouterProvider router={router} />
+                <Toaster />
               </OrderProvider>
             </QuickViewProvider>
           </SiteDataProvider>

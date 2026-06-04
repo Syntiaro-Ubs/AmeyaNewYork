@@ -17,6 +17,20 @@ export function OrderProvider({ children }) {
     localStorage.setItem('ameya_orders', JSON.stringify(orders));
   }, [orders]);
 
+  useEffect(() => {
+    const handleStorage = (e) => {
+      if (e.key === 'ameya_orders' && e.newValue) {
+        try {
+          setOrders(JSON.parse(e.newValue));
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   const addOrder = (orderData) => {
     const newOrder = {
       ...orderData,
@@ -26,7 +40,7 @@ export function OrderProvider({ children }) {
         month: 'long',
         day: 'numeric'
       }),
-      userId: user?.id || 'guest',
+      userId: orderData.userId || user?.id || 'guest',
       status: 'Processing',
       deliveryDate: 'Apr 12, 2026' // Mock delivery date
     };
@@ -44,19 +58,21 @@ export function OrderProvider({ children }) {
     setOrders(prev => prev.filter(order => order.id !== orderId));
   };
 
-  const updateOrderStatus = (orderId, newStatus, newDeliveryDate) => {
+  const updateOrderStatus = (orderId, newStatus, newDeliveryDate, trackingNumber) => {
     setOrders(prev => prev.map(order => 
       order.id === orderId ? { 
         ...order, 
         status: newStatus, 
-        deliveryDate: newDeliveryDate || order.deliveryDate 
+        deliveryDate: newDeliveryDate || order.deliveryDate,
+        trackingNumber: trackingNumber !== undefined ? trackingNumber : order.trackingNumber
       } : order
     ));
   };
 
+
   const getOrders = () => {
     if (!user) return [];
-    return orders.filter(order => order.userId === user.id);
+    return orders.filter(order => String(order.userId) === String(user.id));
   };
 
   return (

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Plus, 
-  Search, 
-  Edit2, 
-  Trash2, 
-  Upload, 
-  Check, 
+import {
+  Plus,
+  Search,
+  Edit2,
+  Trash2,
+  Upload,
+  Check,
   AlertCircle,
   X
 } from 'lucide-react';
@@ -32,7 +32,10 @@ export const Products = () => {
     in_stock: true,
     stock_quantity: 0,
     image: null,
-    gallery: []
+    gallery: [],
+    sizes: 'Small,Medium,Large',
+    size_guide: '',
+    size_stock: {}
   });
   const [activeFilterTab, setActiveFilterTab] = useState('categories'); // 'categories' or 'collections'
   const [activeFilter, setActiveFilter] = useState('all');
@@ -72,36 +75,127 @@ export const Products = () => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === 'checkbox' ? checked : value
+    setFormData(prev => {
+      if (name === 'sizes') {
+        const sizeList = value.split(',').map(s => s.trim()).filter(Boolean);
+        const newSizeStock = {};
+        sizeList.forEach(s => {
+          newSizeStock[s] = (prev.size_stock && prev.size_stock[s] !== undefined) ? prev.size_stock[s] : 0;
+        });
+        const totalStock = Object.values(newSizeStock).reduce((sum, val) => sum + Number(val), 0);
+        return {
+          ...prev,
+          sizes: value,
+          size_stock: newSizeStock,
+          stock_quantity: totalStock
+        };
+      }
+
+      const updated = {
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      };
+
+      if (name === 'category') {
+        let nextSizes = prev.sizes;
+        let nextSizeStock = prev.size_stock || {};
+        if (value === 'rings' && (prev.sizes === 'Small,Medium,Large' || !prev.sizes)) {
+          nextSizes = '5, 6, 7, 8';
+          nextSizeStock = { '5': 0, '6': 0, '7': 0, '8': 0 };
+        } else if (value === 'bracelets' && (prev.sizes === '5, 6, 7, 8' || !prev.sizes)) {
+          nextSizes = 'Small,Medium,Large';
+          nextSizeStock = { 'Small': 0, 'Medium': 0, 'Large': 0 };
+        }
+        const totalStock = Object.values(nextSizeStock).reduce((sum, val) => sum + Number(val), 0);
+        
+        updated.sizes = nextSizes;
+        updated.size_stock = nextSizeStock;
+        updated.stock_quantity = totalStock;
+      }
+      return updated;
     });
   };
 
   const handleFileChange = (e) => {
     const { name, files } = e.target;
     if (name === 'gallery') {
-      setFormData({ ...formData, gallery: Array.from(files) });
+      const selectedFiles = Array.from(files);
+      setFormData(prev => {
+        const currentCount = prev.gallery ? prev.gallery.length : 0;
+        const limit = 3;
+        if (currentCount + selectedFiles.length > limit) {
+          toast.error(`You can only select up to ${limit} gallery images. Only the first ${limit - currentCount} will be added.`);
+          const allowedFiles = selectedFiles.slice(0, limit - currentCount);
+          return {
+            ...prev,
+            gallery: [...(prev.gallery || []), ...allowedFiles]
+          };
+        }
+        return {
+          ...prev,
+          gallery: [...(prev.gallery || []), ...selectedFiles]
+        };
+      });
     } else {
-      setFormData({ ...formData, image: files[0] });
+      setFormData(prev => ({
+        ...prev,
+        image: files[0]
+      }));
     }
+  };
+
+  const handleRemoveGalleryImage = (indexToRemove) => {
+    setFormData(prev => ({
+      ...prev,
+      gallery: prev.gallery.filter((_, idx) => idx !== indexToRemove)
+    }));
   };
 
   const openModal = (product = null) => {
     if (product) {
       setEditingProduct(product);
+      let parsedGallery = [];
+      if (product.gallery) {
+        parsedGallery = typeof product.gallery === 'string'
+          ? JSON.parse(product.gallery)
+          : product.gallery;
+      }
+      let parsedSizeStock = {};
+      if (product.size_stock) {
+        try {
+          parsedSizeStock = typeof product.size_stock === 'string'
+            ? JSON.parse(product.size_stock)
+            : product.size_stock;
+        } catch (e) {
+          console.error('Error parsing size_stock:', e);
+        }
+      } else if (product.sizes) {
+        const sizeList = product.sizes.split(',').map(s => s.trim()).filter(Boolean);
+        sizeList.forEach(s => {
+          parsedSizeStock[s] = 0;
+        });
+      }
       setFormData({
         ...product,
         image: null,
-        gallery: [] // Reset for upload
+        gallery: parsedGallery,
+        sizes: product.sizes || (product.category === 'rings' ? '5, 6, 7, 8' : 'Small,Medium,Large'),
+        size_guide: product.size_guide || '',
+        size_stock: parsedSizeStock
       });
     } else {
       setEditingProduct(null);
+      const defaultCategory = activeFilterTab === 'categories' && activeFilter !== 'all' ? activeFilter : '';
+      const defaultSizes = defaultCategory === 'rings' ? '5, 6, 7, 8' : 'Small,Medium,Large';
+      const initialSizeStock = {};
+      defaultSizes.split(',').map(s => s.trim()).forEach(s => {
+        initialSizeStock[s] = 0;
+      });
       setFormData({
         product_id: '',
         name: '',
         price: '',
-        category: activeFilterTab === 'categories' && activeFilter !== 'all' ? activeFilter : '',
+        category: defaultCategory,
         collection: activeFilterTab === 'collections' && activeFilter !== 'all' ? activeFilter : '',
         description: '',
         material: '',
@@ -110,7 +204,10 @@ export const Products = () => {
         in_stock: true,
         stock_quantity: 0,
         image: null,
-        gallery: []
+        gallery: [],
+        sizes: defaultSizes,
+        size_guide: '',
+        size_stock: initialSizeStock
       });
     }
     setIsModalOpen(true);
@@ -126,11 +223,15 @@ export const Products = () => {
     }
 
     const submitData = new FormData();
-    
+
     // Process all fields except files
     Object.keys(formData).forEach(key => {
       if (key !== 'image' && key !== 'gallery') {
-        submitData.append(key, formData[key]);
+        if (key === 'size_stock') {
+          submitData.append(key, JSON.stringify(formData[key]));
+        } else {
+          submitData.append(key, formData[key]);
+        }
       }
     });
 
@@ -142,13 +243,26 @@ export const Products = () => {
     }
 
     // Gallery images
+    const existingGallery = [];
+    const newGalleryFiles = [];
+
     if (formData.gallery && formData.gallery.length > 0) {
-      formData.gallery.forEach(file => {
-        submitData.append('gallery', file);
+      formData.gallery.forEach(item => {
+        if (typeof item === 'string') {
+          existingGallery.push(item);
+        } else {
+          newGalleryFiles.push(item);
+        }
       });
-    } else if (editingProduct && editingProduct.gallery) {
-      submitData.append('gallery', JSON.stringify(editingProduct.gallery));
     }
+
+    // Append new gallery files
+    newGalleryFiles.forEach(file => {
+      submitData.append('gallery', file);
+    });
+
+    // Append remaining existing gallery image URLs
+    submitData.append('existing_gallery', JSON.stringify(existingGallery));
 
     try {
       const url = editingProduct ? `${API_BASE_URL}/${editingProduct.id}` : API_BASE_URL;
@@ -196,13 +310,13 @@ export const Products = () => {
     const search = searchTerm.toLowerCase();
 
     const matchesSearch = name.includes(search) || pid.includes(search);
-    
+
     if (activeFilter === 'all') return matchesSearch;
-    
-    const matchesFilter = activeFilterTab === 'categories' 
-      ? p.category === activeFilter 
+
+    const matchesFilter = activeFilterTab === 'categories'
+      ? p.category === activeFilter
       : p.collection === activeFilter;
-      
+
     return matchesSearch && matchesFilter;
   });
 
@@ -312,9 +426,9 @@ export const Products = () => {
                     <div className="flex items-center">
                       <div className="h-12 w-12 flex-shrink-0 rounded-lg overflow-hidden bg-neutral-100 border border-neutral-200">
                         {product.image ? (
-                          <img 
-                            src={product.image.startsWith('http') ? product.image : `http://localhost:5000${product.image}`} 
-                            alt={product.name} 
+                          <img
+                            src={product.image.startsWith('http') ? product.image : `http://localhost:5000${product.image}`}
+                            alt={product.name}
                             className="h-full w-full object-cover"
                           />
                         ) : (
@@ -382,7 +496,7 @@ export const Products = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
@@ -452,15 +566,25 @@ export const Products = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Stock Quantity</label>
+                    <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                      Stock Quantity
+                      {(formData.category === 'bracelets' || formData.category === 'rings') && (
+                        <span className="text-[10px] text-neutral-400 font-normal italic lowercase">(auto-calculated)</span>
+                      )}
+                    </label>
                     <input
                       type="number"
                       name="stock_quantity"
                       value={formData.stock_quantity}
                       onChange={handleInputChange}
                       placeholder="0"
-                      className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-neutral-900 text-sm"
+                      className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-1 focus:ring-neutral-900 text-sm ${
+                        (formData.category === 'bracelets' || formData.category === 'rings')
+                          ? 'bg-neutral-100 border-neutral-100 text-neutral-500 cursor-not-allowed'
+                          : 'bg-neutral-50 border-neutral-200'
+                      }`}
                       required
+                      disabled={formData.category === 'bracelets' || formData.category === 'rings'}
                     />
                   </div>
                   <div>
@@ -488,51 +612,173 @@ export const Products = () => {
                       className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-neutral-900 text-sm"
                     />
                   </div>
+
+                  {(formData.category === 'bracelets' || formData.category === 'rings') && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                          Available Sizes
+                          <span className="text-[10px] lowercase text-neutral-400 font-normal italic">
+                            comma-separated (e.g. {formData.category === 'rings' ? '5, 6, 7, 8' : 'Small, Medium, Large'})
+                          </span>
+                        </label>
+                        <input
+                          type="text"
+                          name="sizes"
+                          value={formData.sizes || ''}
+                          onChange={handleInputChange}
+                          placeholder={formData.category === 'rings' ? "e.g. 5, 6, 7, 8" : "e.g. Small, Medium, Large"}
+                          className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-neutral-900 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Size Guide Instructions (Optional)</label>
+                        <textarea
+                          name="size_guide"
+                          value={formData.size_guide || ''}
+                          onChange={handleInputChange}
+                          placeholder="Add custom size guide instructions or measurement chart details if applicable."
+                          className="w-full px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-neutral-900 text-sm resize-y min-h-[42px]"
+                        />
+                      </div>
+                      {/* Sized Stock Grid */}
+                      <div className="md:col-span-2 border border-neutral-100 bg-neutral-50/50 p-4 rounded-xl mt-2 space-y-3">
+                        <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Stock per Size</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                          {(formData.sizes || '').split(',').map(s => s.trim()).filter(Boolean).map(sz => (
+                            <div key={sz}>
+                              <label className="block text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-1">Size {sz} Stock</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={formData.size_stock?.[sz] !== undefined ? formData.size_stock[sz] : 0}
+                                onChange={(e) => {
+                                  const stockVal = Math.max(0, parseInt(e.target.value) || 0);
+                                  setFormData(prev => {
+                                    const updatedStock = {
+                                      ...(prev.size_stock || {}),
+                                      [sz]: stockVal
+                                    };
+                                    const totalStock = Object.values(updatedStock).reduce((sum, val) => sum + Number(val), 0);
+                                    return {
+                                      ...prev,
+                                      size_stock: updatedStock,
+                                      stock_quantity: totalStock
+                                    };
+                                  });
+                                }}
+                                className="w-full px-3 py-1.5 bg-white border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-neutral-900 text-xs"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
 
                 <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Main Product Image</label>
-                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-neutral-200 border-dashed rounded-2xl bg-neutral-50/50 hover:bg-neutral-50 transition-colors">
-                      <div className="space-y-1 text-center">
-                        <Upload className="mx-auto h-10 w-10 text-neutral-300" />
-                        <div className="flex text-sm text-neutral-600">
-                          <label className="relative cursor-pointer bg-transparent rounded-md font-medium text-neutral-900 hover:text-neutral-700">
-                            <span>Upload a file</span>
-                            <input name="image" type="file" className="sr-only" onChange={handleFileChange} />
-                          </label>
-                        </div>
-                        {formData.image && <p className="text-xs text-emerald-600 mt-2">✓ {formData.image.name}</p>}
+                    
+                    {/* Main Image Preview */}
+                    {(formData.image || (editingProduct && editingProduct.image)) ? (
+                      <div className="relative aspect-square rounded-2xl overflow-hidden border border-neutral-200 bg-neutral-50 mb-3 group max-w-[200px]">
+                        <img 
+                          src={formData.image 
+                            ? URL.createObjectURL(formData.image) 
+                            : (editingProduct.image.startsWith('http') ? editingProduct.image : `http://localhost:5000${editingProduct.image}`)
+                          } 
+                          alt="Main product preview" 
+                          className="w-full h-full object-cover" 
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData(prev => ({ ...prev, image: null }));
+                            if (editingProduct) {
+                              setEditingProduct(prev => ({ ...prev, image: null }));
+                            }
+                          }}
+                          className="absolute top-2 right-2 bg-black/60 hover:bg-red-600 text-white p-1.5 rounded-full shadow-md transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-neutral-200 border-dashed rounded-2xl bg-neutral-50/50 hover:bg-neutral-50 transition-colors">
+                        <div className="space-y-1 text-center">
+                          <Upload className="mx-auto h-10 w-10 text-neutral-300" />
+                          <div className="flex text-sm text-neutral-600">
+                            <label className="relative cursor-pointer bg-transparent rounded-md font-medium text-neutral-900 hover:text-neutral-700">
+                              <span>Upload a file</span>
+                              <input name="image" type="file" className="sr-only" onChange={handleFileChange} />
+                            </label>
+                          </div>
+                          <p className="text-xs text-neutral-400 mt-1">Upload a main product image</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Gallery Images (Multi-select)</label>
-                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-neutral-200 border-dashed rounded-2xl bg-neutral-50/50 hover:bg-neutral-50 transition-colors">
-                      <div className="space-y-1 text-center">
-                        <Plus className="mx-auto h-10 w-10 text-neutral-300" />
-                        <div className="flex text-sm text-neutral-600">
-                          <label className="relative cursor-pointer bg-transparent rounded-md font-medium text-neutral-900 hover:text-neutral-700">
-                            <span>Add gallery files</span>
-                            <input name="gallery" type="file" className="sr-only" multiple onChange={handleFileChange} />
-                          </label>
-                        </div>
-                        {formData.gallery.length > 0 && <p className="text-xs text-amber-600 mt-2">{formData.gallery.length} files selected</p>}
+                    <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1.5">Gallery Images (3 images select)</label>
+
+                    {/* Gallery Previews Grid */}
+                    {formData.gallery && formData.gallery.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2 mb-3">
+                        {formData.gallery.map((item, index) => {
+                          const isExisting = typeof item === 'string';
+                          const src = isExisting
+                            ? (item.startsWith('http') ? item : `http://localhost:5000${item}`)
+                            : URL.createObjectURL(item);
+                          return (
+                            <div key={index} className="relative aspect-square rounded-xl overflow-hidden border border-neutral-200 group bg-neutral-50">
+                              <img src={src} alt="Gallery preview" className="w-full h-full object-cover" />
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveGalleryImage(index)}
+                                className="absolute top-1 right-1 bg-black/60 hover:bg-red-600 text-white p-1 rounded-full shadow-md transition-colors"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                              {!isExisting && (
+                                <span className="absolute bottom-1 left-1 bg-neutral-900/80 text-white text-[8px] px-1.5 py-0.5 rounded font-medium tracking-wider uppercase">
+                                  New
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
-                    </div>
+                    )}
+
+                    {(!formData.gallery || formData.gallery.length < 3) && (
+                      <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-neutral-200 border-dashed rounded-2xl bg-neutral-50/50 hover:bg-neutral-50 transition-colors">
+                        <div className="space-y-1 text-center">
+                          <Plus className="mx-auto h-10 w-10 text-neutral-300" />
+                          <div className="flex text-sm text-neutral-600">
+                            <label className="relative cursor-pointer bg-transparent rounded-md font-medium text-neutral-900 hover:text-neutral-700">
+                              <span>Add gallery files</span>
+                              <input name="gallery" type="file" className="sr-only" multiple onChange={handleFileChange} />
+                            </label>
+                          </div>
+                          <p className="text-xs text-neutral-400 mt-1">Upload 3 images</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div className="md:col-span-2 flex items-center gap-8">
                   <label className="flex items-center cursor-pointer">
                     <div className="relative">
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         name="featured"
                         checked={formData.featured}
                         onChange={handleInputChange}
-                        className="sr-only" 
+                        className="sr-only"
                       />
                       <div className={`block w-10 h-6 rounded-full transition-colors ${formData.featured ? 'bg-amber-400' : 'bg-neutral-200'}`}></div>
                       <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${formData.featured ? 'translate-x-4' : ''}`}></div>
@@ -542,12 +788,12 @@ export const Products = () => {
 
                   <label className="flex items-center cursor-pointer">
                     <div className="relative">
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         name="in_stock"
                         checked={formData.in_stock}
                         onChange={handleInputChange}
-                        className="sr-only" 
+                        className="sr-only"
                       />
                       <div className={`block w-10 h-6 rounded-full transition-colors ${formData.in_stock ? 'bg-emerald-400' : 'bg-neutral-200'}`}></div>
                       <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${formData.in_stock ? 'translate-x-4' : ''}`}></div>

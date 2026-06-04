@@ -225,14 +225,14 @@ function QuickViewContent({
                 {/* Main action buttons - side by side */}
                 <div className="flex gap-2">
                   <button onClick={() => {
-                    addToCart(product.id, 1);
+                    addToCart(product.id, 1, product.category?.toLowerCase() === 'bracelets' ? 'Medium' : undefined);
                     closeQuickView();
                     window.location.href = '/checkout';
                   }} className="flex-1 py-[11px] bg-[var(--foreground)] text-white text-[10px] uppercase tracking-[0.24em] hover:opacity-80 transition-opacity flex items-center justify-center gap-1.5">
                     <ShoppingBag size={12} strokeWidth={1.5} /> <span className="hidden sm:inline">Buy Now</span><span className="sm:hidden">Buy</span>
                   </button>
                   <button onClick={() => {
-                    addToCart(product.id, 1);
+                    addToCart(product.id, 1, product.category?.toLowerCase() === 'bracelets' ? 'Medium' : undefined);
                     closeQuickView();
                     window.location.href = '/cart';
                   }} className="flex-1 py-[11px] border border-[var(--foreground)] text-[var(--foreground)] text-[10px] uppercase tracking-[0.24em] hover:bg-[var(--foreground)] hover:text-white transition-all flex items-center justify-center gap-1.5">

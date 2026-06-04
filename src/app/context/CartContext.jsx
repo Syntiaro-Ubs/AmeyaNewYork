@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { getProductIdentifiers, getProductKey } from '../utils/product';
 import { useAuth } from './AuthContext';
+import { toast } from 'sonner';
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -123,6 +124,9 @@ export function CartProvider({ children }) {
         await fetchCart(); // Refresh cart from server
         setLastAddedProductId(normalizedProductId);
         setIsAddedModalOpen(true);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        toast.error(errorData.message || 'Failed to add item to bag.');
       }
     } catch (error) {
       console.error('Error adding to cart:', error);
@@ -168,6 +172,9 @@ export function CartProvider({ children }) {
 
       if (response.ok) {
         setCartItems(prev => prev.map(i => i.id === id ? { ...i, quantity } : i));
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        toast.error(errorData.message || 'Failed to update quantity.');
       }
     } catch (error) {
       console.error('Error updating quantity:', error);
