@@ -1,11 +1,13 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { getImageUrl } from '../utils/image';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useNavigate } from 'react-router';
-import { ChevronRight, Lock, ShieldCheck, Check, Package, CreditCard, Truck, ChevronLeft } from 'lucide-react';
+import { ChevronRight, Lock, ShieldCheck, Check, Package, CreditCard, Truck, ChevronLeft, Loader2, AlertCircle } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useOrders } from '../context/OrderContext';
+import { useAuth } from '../context/AuthContext';
 import { resolveProductByIdentifier } from '../utils/product';
+import { toast } from 'sonner';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -33,6 +35,7 @@ function maskCard(n) {
 }
 export function Checkout() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const {
     cartItems,
     clearCart
@@ -93,9 +96,6 @@ export function Checkout() {
   });
   const [errors, setErrors] = useState({});
   const [selectedShipping, setSelectedShipping] = useState('standard');
-  useEffect(() => {
-    if (cartItems.length === 0 && step !== 'confirmation') navigate('/cart');
-  }, [cartItems]);
 
   // ── Validation ──────────────────────────────────────────────────────────
   const validateShipping = () => {
@@ -120,6 +120,157 @@ export function Checkout() {
     return Object.keys(e).length === 0;
   };
   const { addOrder } = useOrders();
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationError, setVerificationError] = useState(null);
+
+  const addOrderRef = useRef(addOrder);
+  const clearCartRef = useRef(clearCart);
+
+  useEffect(() => {
+    addOrderRef.current = addOrder;
+  }, [addOrder]);
+
+  useEffect(() => {
+    clearCartRef.current = clearCart;
+  }, [clearCart]);
+
+  // Redirect to cart if empty (and not verifying)
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const txnId = query.get('txnId');
+    if (txnId || isVerifying) return;
+
+    if (cartItems.length === 0 && step !== 'confirmation') {
+      navigate('/cart');
+    }
+  }, [cartItems, isVerifying, step]);
+
+  // Monitor redirects back from PhonePe PG UAT
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const txnId = query.get('txnId');
+
+    if (txnId) {
+      setIsVerifying(true);
+      setVerificationError(null);
+
+      async function verifyPayment() {
+        try {
+          const res = await fetch('http://localhost:5000/api/payment/status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ transactionId: txnId })
+          });
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || 'Payment status check failed.');
+          }
+
+          const data = await res.json();
+          if (data.paymentStatus === 'PAYMENT_SUCCESS') {
+            const cachedString = sessionStorage.getItem('ameya_checkout_cache');
+            if (cachedString) {
+              const cachedData = JSON.parse(cachedString);
+              if (cachedData.transactionId === txnId) {
+                // Place order ONLY upon successful verification
+                addOrderRef.current({
+                  items: cachedData.items,
+                  total: cachedData.total,
+                  shippingAddress: cachedData.shippingAddress,
+                  paymentMethod: 'PhonePe Standard Gateway',
+                  transactionId: txnId,
+                  userId: cachedData.userId
+                });
+
+                // Decrement stock in database
+                try {
+                  await fetch('http://localhost:5000/api/products/decrement-stock', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items: cachedData.items })
+                  });
+                } catch (stockErr) {
+                  console.error('Failed to decrement stock:', stockErr);
+                }
+
+                clearCartRef.current?.();
+                sessionStorage.removeItem('ameya_checkout_cache');
+                setStep('confirmation');
+                toast.success('Payment completed successfully!');
+              } else {
+                throw new Error('Transaction ID context mismatch.');
+              }
+            } else {
+              throw new Error('Checkout cached details not found.');
+            }
+          } else {
+            throw new Error(`Transaction state: ${data.paymentStatus}. Payment was incomplete.`);
+          }
+        } catch (err) {
+          console.error('PhonePe verification error:', err);
+          setVerificationError(err.message || 'Verification failed. Please retry payment.');
+          setStep('payment');
+          toast.error(err.message || 'Payment verification failed.');
+        } finally {
+          setIsVerifying(false);
+          // Clean parameters from address bar
+          navigate('/checkout', { replace: true });
+        }
+      }
+
+      verifyPayment();
+    }
+  }, []);
+
+  const handlePhonePePayment = async () => {
+    const txnId = `TXN-${Date.now()}`;
+    const checkoutData = {
+      items: cartProducts.map(cp => ({
+        productId: cp.productId,
+        name: cp.product.name,
+        price: cp.product.price,
+        image: cp.product.image,
+        quantity: cp.quantity,
+        size: cp.size
+      })),
+      total: total,
+      shippingAddress: shipping,
+      transactionId: txnId,
+      userId: user?.id || 'guest'
+    };
+
+    sessionStorage.setItem('ameya_checkout_cache', JSON.stringify(checkoutData));
+
+    try {
+      setLoading(true);
+      const res = await fetch('http://localhost:5000/api/payment/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: total,
+          transactionId: txnId,
+          userId: shipping.email
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Initiation request failed.');
+      }
+
+      const data = await res.json();
+      if (data.redirectUrl) {
+        window.location.href = data.redirectUrl;
+      } else {
+        throw new Error('Redirect URL not received.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || 'Could not redirect to PhonePe. Please try again.');
+      setLoading(false);
+    }
+  };
 
   const handleNext = () => {
     if (step === 'contact') {
@@ -130,29 +281,10 @@ export function Checkout() {
         behavior: 'smooth'
       });
     } else if (step === 'payment') {
-      if (!validatePayment()) return;
-      
-      // Save order to context
-      addOrder({
-        items: cartProducts.map(cp => ({
-          name: cp.product.name,
-          price: cp.product.price,
-          image: cp.product.image,
-          quantity: cp.quantity
-        })),
-        total: total,
-        shippingAddress: shipping,
-        paymentMethod: 'Credit Card' // Mock for now
-      });
-
-      clearCart?.();
-      setStep('confirmation');
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
+      handlePhonePePayment();
     }
   };
+
   const shippingOptions = {
     standard: {
       label: 'Standard Shipping',
@@ -173,6 +305,16 @@ export function Checkout() {
 
   // ── Shared Input Class ──────────────────────────────────────────────────
   const inputCls = field => `w-full border ${errors[field] ? 'border-red-400' : 'border-[var(--border)]'} bg-white px-4 py-3 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:border-[var(--primary)] transition-colors`;
+
+  if (isVerifying) {
+    return (
+      <div className="min-h-screen bg-[var(--background)] flex flex-col items-center justify-center p-4">
+        <Loader2 className="w-12 h-12 text-[var(--primary)] animate-spin mb-4" />
+        <h2 className="font-serif text-2xl text-[var(--foreground)] mb-2">Verifying Payment</h2>
+        <p className="text-sm text-[var(--muted-foreground)]">Please wait while we verify your transaction status with PhonePe...</p>
+      </div>
+    );
+  }
 
   // ── Progress Bar ────────────────────────────────────────────────────────
   const stepIndex = STEPS.findIndex(s => s.key === step);
@@ -352,7 +494,7 @@ export function Checkout() {
               </div>
 
               {/* Order Summary */}
-              <OrderSummary cartProducts={cartProducts} subtotal={subtotal} total={total} />
+              <OrderSummary cartProducts={cartProducts} subtotal={subtotal} tax={tax} total={total} />
             </motion.div>}
 
           {/* ───────────────── STEP 2: PAYMENT ─────────────────── */}
@@ -374,73 +516,41 @@ export function Checkout() {
                   <div className="flex items-center gap-3">
                     <Truck size={16} className="text-[var(--primary)]" />
                     <div>
-                      <p className="text-xs uppercase tracking-widest text-[var(--muted-foreground)] mb-0.5">Shipping to</p>
-                      <p className="text-sm text-[var(--foreground)]">{shipping.firstName} {shipping.lastName} — {shipping.address}, {shipping.city}, {shipping.state} {shipping.zip}</p>
+                      <p className="text-xs text-[var(--muted-foreground)]">Ship to</p>
+                      <p className="text-sm font-medium text-[var(--foreground)]">{shipping.address}, {shipping.city}</p>
                     </div>
                   </div>
-                  <button onClick={() => setStep('contact')} className="text-xs text-[var(--primary)] hover:underline underline-offset-2">Edit</button>
+                  <button onClick={() => setStep('contact')} className="text-xs text-[var(--primary)] uppercase tracking-widest hover:underline">Change</button>
                 </div>
 
-                {/* Card Details */}
-                <section>
-                  <h2 className="font-serif text-2xl text-[var(--foreground)] mb-6">Payment Details</h2>
+                {verificationError && (
+                  <div className="bg-red-50 border border-red-100 text-red-800 text-xs px-4 py-3 rounded-sm flex items-center gap-3">
+                    <AlertCircle size={14} className="text-red-600 flex-shrink-0" />
+                    <span>{verificationError}</span>
+                  </div>
+                )}
 
-                  {/* Card Visual */}
-                  <div className="relative w-full max-w-sm h-44 rounded-xl mb-8 overflow-hidden shadow-lg" style={{
-                background: 'linear-gradient(135deg, var(--color-emerald-800) 0%, #022003 100%)'
-              }}>
-                    <div className="absolute inset-0 p-6 flex flex-col justify-between text-white">
-                      <div className="flex justify-between items-start">
-                        <span className="font-serif text-lg tracking-widest">AMEYA</span>
-                        <CreditCard size={28} className="opacity-70" />
-                      </div>
-                      <div>
-                        <p className="font-mono text-lg tracking-widest mb-2 opacity-90">
-                          {payment.cardNumber ? maskCard(payment.cardNumber) : '•••• •••• •••• ••••'}
-                        </p>
-                        <div className="flex justify-between text-xs opacity-70 uppercase tracking-widest">
-                          <span>{payment.cardName || 'Cardholder Name'}</span>
-                          <span>{payment.expiry || 'MM/YY'}</span>
-                        </div>
-                      </div>
+                <section className="bg-white p-6 border border-[var(--border)] rounded-sm space-y-6">
+                  <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
+                    <h2 className="font-serif text-xl text-[var(--foreground)]">Payment Method</h2>
+                    <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded text-[10px] font-semibold uppercase tracking-wider">UPI / Cards / NetBanking</span>
+                  </div>
+                  
+                  <div className="flex items-start gap-4 py-5 px-6 border border-purple-200 bg-purple-50/20 rounded-sm">
+                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <CreditCard size={24} className="text-purple-700" />
                     </div>
-                    {/* shimmer */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
+                    <div className="space-y-1">
+                      <p className="font-bold text-sm text-[var(--foreground)]">PhonePe Secure Checkout</p>
+                      <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                        Secure connection to the PhonePe checkout gateway. You will be redirected to the secure sandbox payment portal where you can pay using simulated cards, UPI QR, or NetBanking.
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2">
-                      <label className="block text-xs uppercase tracking-widest text-[var(--muted-foreground)] mb-1.5">Name on Card</label>
-                      <input className={inputCls('cardName')} value={payment.cardName} onChange={e => setPayment(p => ({
-                    ...p,
-                    cardName: e.target.value
-                  }))} placeholder="Jane Doe" />
-                      {errors.cardName && <p className="text-red-400 text-xs mt-1">{errors.cardName}</p>}
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-xs uppercase tracking-widest text-[var(--muted-foreground)] mb-1.5">Card Number</label>
-                      <input className={inputCls('cardNumber')} value={payment.cardNumber} onChange={e => setPayment(p => ({
-                    ...p,
-                    cardNumber: formatCard(e.target.value)
-                  }))} placeholder="1234 5678 9012 3456" maxLength={19} />
-                      {errors.cardNumber && <p className="text-red-400 text-xs mt-1">{errors.cardNumber}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-widest text-[var(--muted-foreground)] mb-1.5">Expiry Date</label>
-                      <input className={inputCls('expiry')} value={payment.expiry} onChange={e => setPayment(p => ({
-                    ...p,
-                    expiry: formatExpiry(e.target.value)
-                  }))} placeholder="MM/YY" maxLength={5} />
-                      {errors.expiry && <p className="text-red-400 text-xs mt-1">{errors.expiry}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-widest text-[var(--muted-foreground)] mb-1.5">CVV</label>
-                      <input className={inputCls('cvv')} value={payment.cvv} onChange={e => setPayment(p => ({
-                    ...p,
-                    cvv: e.target.value.replace(/\D/g, '').slice(0, 4)
-                  }))} placeholder="•••" maxLength={4} type="password" />
-                      {errors.cvv && <p className="text-red-400 text-xs mt-1">{errors.cvv}</p>}
-                    </div>
+                  <div className="text-xs text-[var(--muted-foreground)] italic flex items-center gap-1.5">
+                    <Lock size={12} className="text-[var(--primary)]" />
+                    <span>PhonePe encryption ensures your credentials are 100% secure.</span>
                   </div>
                 </section>
 
@@ -511,7 +621,7 @@ export function Checkout() {
                 </div>
               </div>
 
-              <OrderSummary cartProducts={cartProducts} subtotal={subtotal} total={total} />
+              <OrderSummary cartProducts={cartProducts} subtotal={subtotal} tax={tax} total={total} />
             </motion.div>}
 
           {/* ───────────────── STEP 3: CONFIRMATION ─────────────────── */}
@@ -609,10 +719,10 @@ export function Checkout() {
 
 // ─── Order Summary Sidebar ──────────────────────────────────────────────────
 function OrderSummary({
-  cartProducts,
-  subtotal,
-  tax,
-  total
+  cartProducts = [],
+  subtotal = 0,
+  tax = 0,
+  total = 0
 }) {
   const [open, setOpen] = useState(true);
   return <div className="lg:col-span-5">

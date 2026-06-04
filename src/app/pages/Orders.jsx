@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useOrders } from '../context/OrderContext';
-import { Package, CheckCircle, Clock, Search, XCircle, ChevronRight, X, Truck } from 'lucide-react';
+import { Package, CheckCircle, Clock, Search, XCircle, ChevronRight, X, Truck, Loader2, AlertCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { toast } from 'sonner';
+import { getLiveTracking } from '../services/trackingService';
 
 // ... (skipping to Orders function)
 
@@ -119,6 +120,11 @@ export function Orders() {
                   </div>
                   <div>
                     <p className="text-xs uppercase font-bold text-gray-400 mb-1">Order # {order.id}</p>
+                    {order.trackingNumber && (
+                      <p className="text-[11px] text-gray-500 mb-1">
+                        Tracking #: <span className="font-mono text-gray-700 font-semibold">{order.trackingNumber}</span>
+                      </p>
+                    )}
                     <div className="flex gap-3 text-xs md:justify-end">
                       <button 
                         onClick={() => toast.info('Invoice download started...')} 
@@ -224,11 +230,58 @@ export function Orders() {
 }
 
 function TrackingModal({ order, onClose }) {
+  const [trackingData, setTrackingData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { updateOrderStatus } = useOrders();
+
+  // Use the order's tracking number if assigned; otherwise, default to standard FedEx sandbox dummy for testing
+  const trackingNumber = order.trackingNumber || '123456789012';
+  const isMockFallback = !order.trackingNumber;
+
+  useEffect(() => {
+    let isMounted = true;
+    
+    async function loadTracking() {
+      try {
+        setLoading(true);
+        const data = await getLiveTracking(trackingNumber);
+        if (isMounted) {
+          setTrackingData(data);
+          setError(null);
+
+          // Dynamically sync order status from FedEx live tracker
+          if (data && data.status && data.status !== order.status) {
+            const formattedDate = data.estimatedDelivery 
+              ? new Date(data.estimatedDelivery).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+              : order.deliveryDate;
+            updateOrderStatus(order.id, data.status, formattedDate);
+          }
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err.message || 'Unable to retrieve live shipment status.');
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadTracking();
+    
+    return () => { isMounted = false; };
+  }, [trackingNumber, order.status]);
+
   const getStepStatus = (stepLabel) => {
-    if (order.status === 'Cancelled' && stepLabel !== 'Ordered') return 'cancelled';
+    if (!trackingData) return 'pending';
+    if (trackingData.status === 'Cancelled' && stepLabel !== 'Ordered') return 'cancelled';
     
     const statusOrder = ['Ordered', 'Processing', 'Shipped', 'Out for Delivery', 'Delivered'];
-    const currentStatusIndex = statusOrder.indexOf(order.status === 'Cancelled' ? 'Processing' : order.status);
+    const currentStatusIndex = statusOrder.indexOf(
+      trackingData.status === 'Cancelled' ? 'Processing' : trackingData.status
+    );
     const stepIndex = statusOrder.indexOf(stepLabel);
 
     if (stepIndex < currentStatusIndex) return 'completed';
@@ -239,9 +292,27 @@ function TrackingModal({ order, onClose }) {
   const steps = [
     { label: 'Ordered', status: 'completed', date: order.date },
     { label: 'Processing', status: getStepStatus('Processing'), date: order.date },
-    { label: 'Shipped', status: getStepStatus('Shipped'), date: order.status === 'Shipped' || order.status === 'Out for Delivery' || order.status === 'Delivered' ? 'Apr 08' : 'Pending' },
-    { label: 'Out for Delivery', status: getStepStatus('Out for Delivery'), date: order.status === 'Out for Delivery' ? 'Today' : 'Pending' },
-    { label: 'Delivered', status: getStepStatus('Delivered'), date: order.deliveryDate || 'Pending' }
+    { 
+      label: 'Shipped', 
+      status: getStepStatus('Shipped'), 
+      date: trackingData?.scans?.find(s => ['PU', 'DP', 'AR', 'IT'].includes(s.status) || s.description?.toLowerCase().includes('picked up') || s.description?.toLowerCase().includes('departed'))?.timestamp 
+            ? new Date(trackingData.scans.find(s => ['PU', 'DP', 'AR', 'IT'].includes(s.status) || s.description?.toLowerCase().includes('picked up') || s.description?.toLowerCase().includes('departed')).timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : 'Pending'
+    },
+    { 
+      label: 'Out for Delivery', 
+      status: getStepStatus('Out for Delivery'), 
+      date: trackingData?.scans?.find(s => ['OD', 'HL'].includes(s.status) || s.description?.toLowerCase().includes('out for delivery') || s.description?.toLowerCase().includes('ready for recipient pickup'))?.timestamp
+            ? new Date(trackingData.scans.find(s => ['OD', 'HL'].includes(s.status) || s.description?.toLowerCase().includes('out for delivery') || s.description?.toLowerCase().includes('ready for recipient pickup')).timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : 'Pending'
+    },
+    { 
+      label: 'Delivered', 
+      status: getStepStatus('Delivered'), 
+      date: trackingData?.status === 'Delivered' && trackingData.estimatedDelivery 
+            ? new Date(trackingData.estimatedDelivery).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : (trackingData?.estimatedDelivery ? new Date(trackingData.estimatedDelivery).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Pending')
+    }
   ];
 
   return (
@@ -268,56 +339,119 @@ function TrackingModal({ order, onClose }) {
           </button>
         </div>
 
-        <div className="p-8 flex-1 overflow-y-auto">
-          {/* Status highlight */}
-          <div className="bg-gray-50 p-4 rounded-sm mb-8 flex items-center gap-4">
-            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm">
-              <Truck size={24} className="text-[var(--primary)]" />
+        {/* Modal Body */}
+        <div className="p-8 flex-1 overflow-y-auto min-h-[300px] flex flex-col justify-center">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Loader2 className="w-10 h-10 animate-spin text-[var(--primary)] mb-4" />
+              <p className="text-sm text-gray-500">Contacting FedEx sandbox...</p>
             </div>
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-[0.1em] mb-0.5">Estimated Delivery</p>
-              <p className="text-lg font-medium text-[var(--foreground)]">{order.deliveryDate || 'TBD'}</p>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
+              <h4 className="font-bold text-gray-900 mb-1">Could Not Retrieve Live Status</h4>
+              <p className="text-sm text-gray-500 max-w-xs">{error}</p>
+              <button 
+                onClick={onClose}
+                className="mt-6 px-6 py-2 bg-[var(--primary)] text-white text-xs uppercase tracking-wider font-semibold hover:opacity-90 transition-opacity"
+              >
+                Go Back
+              </button>
             </div>
-          </div>
-
-          {/* Timeline */}
-          <div className="space-y-0 relative">
-            {steps.map((step, idx) => (
-              <div key={idx} className="flex gap-6 min-h-[80px] last:min-h-0">
-                <div className="flex flex-col items-center">
-                  <div className={`w-4 h-4 rounded-full flex items-center justify-center z-10 
-                    ${step.status === 'completed' ? 'bg-green-500' : 
-                      step.status === 'current' ? 'bg-blue-500 ring-4 ring-blue-100' : 
-                      step.status === 'cancelled' ? 'bg-red-500' : 'bg-gray-200'}`}
-                  >
-                    {(step.status === 'completed' || step.status === 'cancelled') && <CheckCircle size={10} className="text-white" />}
-                  </div>
-                  {idx < steps.length - 1 && (
-                    <div className={`w-0.5 flex-1 ${step.status === 'completed' ? 'bg-green-200' : 'bg-gray-100'}`} />
-                  )}
+          ) : (
+            <>
+              {isMockFallback && (
+                <div className="bg-amber-50 border border-amber-100 text-amber-800 text-xs px-4 py-2.5 rounded-sm mb-6 flex items-center gap-2">
+                  <AlertCircle size={14} />
+                  <span>No tracking number assigned. Running sandbox mock flow (`123456789012`).</span>
                 </div>
-                <div className="pb-8 last:pb-0">
-                  <h4 className={`text-sm font-bold uppercase tracking-widest ${step.status === 'pending' ? 'text-gray-300' : 'text-gray-900'}`}>{step.label}</h4>
-                  <p className="text-xs text-gray-500 mt-1">{step.status === 'cancelled' ? 'Order Cancelled' : step.date}</p>
+              )}
+
+              {/* Status highlight */}
+              <div className="bg-gray-50 p-4 rounded-sm mb-8 flex items-center gap-4">
+                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm">
+                  <Truck size={24} className="text-[var(--primary)]" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-[0.1em] mb-0.5">
+                    {trackingData.status === 'Delivered' ? 'Delivery Date' : 'Estimated Delivery'}
+                  </p>
+                  <p className="text-lg font-medium text-[var(--foreground)]">
+                    {trackingData.estimatedDelivery 
+                      ? new Date(trackingData.estimatedDelivery).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) 
+                      : 'TBD'}
+                  </p>
+                  <p className="text-xs text-gray-500 italic mt-0.5">{trackingData.description}</p>
                 </div>
               </div>
-            ))}
-          </div>
 
-          {/* Carrier Info */}
-          <div className="mt-10 pt-8 border-t border-gray-100 flex justify-between items-center text-sm">
-            <div>
-              <p className="text-gray-400 text-xs uppercase tracking-widest mb-1">Carrier</p>
-              <p className="font-medium">FedEx Express</p>
-            </div>
-            <div className="text-right">
-              <p className="text-gray-400 text-xs uppercase tracking-widest mb-1">Tracking Number</p>
-              <p className="font-medium text-[var(--primary)] hover:underline cursor-pointer">AMY{order.id.split('-')[1]}Tracking</p>
-            </div>
-          </div>
+              {/* Timeline */}
+              <div className="space-y-0 relative mb-8">
+                {steps.map((step, idx) => (
+                  <div key={idx} className="flex gap-6 min-h-[80px] last:min-h-0">
+                    <div className="flex flex-col items-center">
+                      <div className={`w-4 h-4 rounded-full flex items-center justify-center z-10 
+                        ${step.status === 'completed' ? 'bg-green-500' : 
+                          step.status === 'current' ? 'bg-blue-500 ring-4 ring-blue-100' : 
+                          step.status === 'cancelled' ? 'bg-red-500' : 'bg-gray-200'}`}
+                      >
+                        {(step.status === 'completed' || step.status === 'cancelled') && <CheckCircle size={10} className="text-white" />}
+                      </div>
+                      {idx < steps.length - 1 && (
+                        <div className={`w-0.5 flex-1 ${step.status === 'completed' ? 'bg-green-200' : 'bg-gray-100'}`} />
+                      )}
+                    </div>
+                    <div className="pb-8 last:pb-0">
+                      <h4 className={`text-sm font-bold uppercase tracking-widest ${step.status === 'pending' ? 'text-gray-300' : 'text-gray-900'}`}>{step.label}</h4>
+                      <p className="text-xs text-gray-500 mt-1">{step.status === 'cancelled' ? 'Order Cancelled' : step.date}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Travel History Scans */}
+              {trackingData.scans && trackingData.scans.length > 0 && (
+                <div className="border-t border-gray-100 pt-6">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Travel History</h4>
+                  <div className="max-h-[150px] overflow-y-auto space-y-3 pr-2 text-xs">
+                    {trackingData.scans.map((scan, i) => (
+                      <div key={i} className="flex justify-between border-b border-gray-50 pb-2">
+                        <div className="pr-4">
+                          <p className="font-semibold text-gray-800">{scan.description}</p>
+                          <p className="text-gray-400">{scan.location}</p>
+                        </div>
+                        <div className="text-right text-gray-400 whitespace-nowrap">
+                          {new Date(scan.timestamp).toLocaleString(undefined, {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'})}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Carrier Info */}
+              <div className="mt-8 pt-6 border-t border-gray-100 flex justify-between items-center text-sm">
+                <div>
+                  <p className="text-gray-400 text-xs uppercase tracking-widest mb-1">Carrier</p>
+                  <p className="font-medium">FedEx Express</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-gray-400 text-xs uppercase tracking-widest mb-1">Tracking Number</p>
+                  <a 
+                    href={`https://www.fedex.com/fedextrack/?trknbr=${trackingNumber}`} 
+                    target="_blank" 
+                    rel="noreferrer" 
+                    className="font-medium text-[var(--primary)] hover:underline"
+                  >
+                    {trackingNumber}
+                  </a>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
-        <div className="px-6 py-4 bg-gray-50 flex justify-end">
+        <div className="px-6 py-4 bg-gray-50 flex justify-end border-t border-gray-100">
           <button onClick={onClose} className="px-6 py-2 bg-[var(--primary)] text-white text-xs uppercase tracking-widest hover:opacity-90 transition-opacity">
             Close
           </button>
@@ -326,3 +460,4 @@ function TrackingModal({ order, onClose }) {
     </motion.div>
   );
 }
+

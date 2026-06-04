@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   Package, 
@@ -19,10 +19,47 @@ export const OrderManagement = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState(null);
 
+  // Auto-sync active orders with FedEx tracking status on mount
+  useEffect(() => {
+    let isMounted = true;
+
+    async function syncTrackingStatuses() {
+      // Find orders with a tracking number that aren't Delivered or Cancelled
+      const activeOrders = orders.filter(
+        order => order.trackingNumber && order.status !== 'Delivered' && order.status !== 'Cancelled'
+      );
+
+      if (activeOrders.length === 0) return;
+
+      for (const order of activeOrders) {
+        try {
+          const response = await fetch(`http://localhost:5000/api/tracking/${order.trackingNumber}`);
+          if (!response.ok) continue;
+
+          const result = await response.json();
+          const freshData = result.data;
+
+          if (isMounted && freshData && freshData.status && freshData.status !== order.status) {
+            const formattedDate = freshData.estimatedDelivery 
+              ? new Date(freshData.estimatedDelivery).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+              : order.deliveryDate;
+            
+            updateOrderStatus(order.id, freshData.status, formattedDate);
+          }
+        } catch (err) {
+          console.error(`Auto-sync failed for order ${order.id}:`, err);
+        }
+      }
+    }
+
+    syncTrackingStatuses();
+  }, []); // Run once on mount
+
+
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
       order.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      (order.userId && order.userId.toLowerCase().includes(searchTerm.toLowerCase()));
+      (order.userId && String(order.userId).toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     
@@ -111,7 +148,7 @@ export const OrderManagement = () => {
                 <th className="px-6 py-4 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Date</th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Total</th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">Action</th>
+                <th className="px-6 py-4 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">FedEx Tracking</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-neutral-100">
@@ -129,33 +166,36 @@ export const OrderManagement = () => {
                       <div>
                         <p className="text-sm font-medium text-neutral-900">{order.id}</p>
                         <p className="text-xs text-neutral-500">{order.items.length} items</p>
+                        {order.trackingNumber && (
+                          <p className="text-[10px] text-neutral-400 font-mono mt-0.5">Track: {order.trackingNumber}</p>
+                        )}
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <p className="text-sm text-neutral-900 font-medium capitalize">{order.userId.replace('_', ' ')}</p>
+                    <p className="text-sm text-neutral-900 font-medium capitalize">{String(order.userId || '').replace('_', ' ')}</p>
                     <p className="text-xs text-neutral-500">{order.shippingAddress.email || 'Email not provided'}</p>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-500">{order.date}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-neutral-900">${order.total.toLocaleString()}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(order.status)}`}>
-                      {order.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
                     <select 
                       value={order.status}
                       onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                      className="text-xs bg-white border border-neutral-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-neutral-900 cursor-pointer"
+                      className={`text-xs font-medium border rounded-full px-3 py-1 focus:outline-none cursor-pointer transition-all ${getStatusColor(order.status)}`}
                     >
-                      <option value="Processing">Set Processing</option>
-                      <option value="Shipped">Set Shipped</option>
-                      <option value="Out for Delivery">Set Out for Delivery</option>
-                      <option value="Delivered">Set Delivered</option>
-                      <option value="Cancelled">Set Cancelled</option>
+                      <option value="Processing" className="text-neutral-700 bg-white">Processing</option>
+                      <option value="Shipped" className="text-neutral-700 bg-white">Shipped</option>
+                      <option value="Out for Delivery" className="text-neutral-700 bg-white">Out for Delivery</option>
+                      <option value="Delivered" className="text-neutral-700 bg-white">Delivered</option>
+                      <option value="Cancelled" className="text-neutral-700 bg-white">Cancelled</option>
                     </select>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right font-mono text-sm text-neutral-600">
+                    {order.trackingNumber || '—'}
+                  </td>
+
+
                 </tr>
               ))}
             </tbody>

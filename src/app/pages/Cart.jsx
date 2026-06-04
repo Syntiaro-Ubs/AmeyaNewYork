@@ -6,6 +6,32 @@ import { Link, useNavigate } from 'react-router';
 import 'sonner';
 import { useCart } from '../context/CartContext';
 import { getProductRouteId, resolveProductByIdentifier } from '../utils/product';
+
+function getSizeStockLimit(product, size) {
+  if (!product) return Infinity;
+  const cat = product.category?.toLowerCase();
+  if ((cat === 'bracelets' || cat === 'rings') && size) {
+    if (product.size_stock) {
+      try {
+        const sizeStock = typeof product.size_stock === 'string'
+          ? JSON.parse(product.size_stock)
+          : product.size_stock;
+        if (sizeStock) {
+          const szKey = size.trim();
+          const matchingKey = Object.keys(sizeStock).find(k => k.toLowerCase() === szKey.toLowerCase());
+          if (matchingKey !== undefined) {
+            return Number(sizeStock[matchingKey]);
+          }
+          return 0; // Size has size stock config but this size is not in it
+        }
+      } catch (e) {
+        console.error('Error parsing size_stock:', e);
+      }
+    }
+  }
+  return product.stock_quantity !== undefined ? Number(product.stock_quantity) : Infinity;
+}
+
 export function Cart() {
   const {
     cartItems,
@@ -49,13 +75,16 @@ export function Cart() {
   }, 0);
   const shipping = 0; // Free shipping for luxury items usually
   const total = subtotal + shipping;
-  const handleUpdateQuantity = (id, newQuantity) => {
+  const handleUpdateQuantity = (item, newQuantity) => {
     if (newQuantity < 1) return;
-    setIsUpdating(id);
+    const limit = getSizeStockLimit(item.product, item.size);
+    if (newQuantity > limit) return;
+
+    setIsUpdating(item.id);
 
     // Simulate API delay slightly for UX
     setTimeout(() => {
-      updateQuantity(id, newQuantity);
+      updateQuantity(item.id, newQuantity);
       setIsUpdating(null);
     }, 200);
   };
@@ -139,13 +168,13 @@ export function Cart() {
                       <div className="flex justify-between items-end mt-4 sm:mt-0">
                         {/* Quantity Control */}
                         <div className="flex items-center border border-[var(--card)] rounded-sm overflow-hidden">
-                          <button onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1 || isUpdating === item.id} className="p-2 hover:bg-[var(--primary)] hover:text-white active:bg-[var(--primary)] active:text-white transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-inherit" style={{
+                          <button onClick={() => handleUpdateQuantity(item, item.quantity - 1)} disabled={item.quantity <= 1 || isUpdating === item.id} className="p-2 hover:bg-[var(--primary)] hover:text-white active:bg-[var(--primary)] active:text-white transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-inherit" style={{
                         WebkitTapHighlightColor: 'transparent'
                       }}>
                             <Minus size={14} />
                           </button>
                           <span className="w-8 text-center text-sm font-medium border-x border-[var(--card)]">{item.quantity}</span>
-                          <button onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)} disabled={isUpdating === item.id} className="p-2 hover:bg-[var(--primary)] hover:text-white active:bg-[var(--primary)] active:text-white transition-colors" style={{
+                          <button onClick={() => handleUpdateQuantity(item, item.quantity + 1)} disabled={isUpdating === item.id || item.quantity >= getSizeStockLimit(item.product, item.size)} className="p-2 hover:bg-[var(--primary)] hover:text-white active:bg-[var(--primary)] active:text-white transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-inherit" style={{
                         WebkitTapHighlightColor: 'transparent'
                       }}>
                             <Plus size={14} />

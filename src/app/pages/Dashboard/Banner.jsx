@@ -11,6 +11,14 @@ import { toast } from 'sonner';
 import { BANNERS_API_URL } from './constants';
 const HP_API_BASE = 'http://localhost:5000/api/homepage';
 
+const PAGE_NAMES = {
+  'home': 'Home Page',
+  'our-story': 'Our Story',
+  'careers': 'Careers',
+  'journal': 'Journal',
+  'new-arrivals': 'All Jewelry'
+};
+
 export const Banner = () => {
   const [banners, setBanners] = useState([]);
   const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
@@ -136,7 +144,7 @@ export const Banner = () => {
             <div className="p-4">
               <p className="text-xs font-semibold text-neutral-400 uppercase tracking-widest">Target Page</p>
               <p className="text-sm font-medium text-neutral-900 capitalize">
-                {dynamicCategories.find(c => c.slug === banner.page_slug)?.name || dynamicCollections.find(c => c.slug === banner.page_slug)?.name || banner.page_slug}
+                {PAGE_NAMES[banner.page_slug] || dynamicCategories.find(c => c.slug === banner.page_slug)?.name || dynamicCollections.find(c => c.slug === banner.page_slug)?.name || banner.page_slug}
               </p>
             </div>
           </div>
@@ -168,7 +176,7 @@ export const Banner = () => {
                   <option value="our-story">Our Story</option>
                   <option value="careers">Careers</option>
                   <option value="journal">Journal</option>
-                  <option value="new-arrivals">New Arrivals</option>
+                  <option value="new-arrivals">All Jewelry</option>
                   <optgroup label="Categories">
                     {dynamicCategories.map(cat => <option key={cat.slug} value={cat.slug}>{cat.name}</option>)}
                   </optgroup>
